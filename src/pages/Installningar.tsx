@@ -1,19 +1,19 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { TrustLevelBadge } from '@/components/TrustLevelBadge';
-import { useAppAuth } from '@/contexts/AuthContext';
-import { User, Shield, Bell } from 'lucide-react';
-import { useState } from 'react';
-import { UpgradeModal } from '@/components/UpgradeModal';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { TrustLevelBadge } from '@/components/TrustLevelBadge'
+import { useAppAuth } from '@/contexts/AuthContext'
+import { User, Shield, Bell } from 'lucide-react'
+import { useState } from 'react'
+import { UpgradeModal } from '@/components/UpgradeModal'
 
 export function Installningar() {
-  const { user, trustLevel } = useAppAuth();
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { profile, trustLevel } = useAppAuth()
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
   const showUpgrade =
-    trustLevel === 'org_nr' || trustLevel === 'pending_manual';
+    trustLevel === 'org_nr' || trustLevel === 'pending_manual'
 
   return (
     <div className="space-y-6">
@@ -35,11 +35,11 @@ export function Installningar() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Namn</Label>
-                <Input defaultValue={user?.name || ''} disabled />
+                <Input defaultValue={profile?.display_name || ''} disabled />
               </div>
               <div className="space-y-2">
                 <Label>E-post</Label>
-                <Input defaultValue={user?.email || ''} disabled />
+                <Input defaultValue={profile?.email || ''} disabled />
               </div>
             </div>
             {/* TODO: ED-3 — Enable profile editing with Supabase update */}
@@ -63,7 +63,7 @@ export function Installningar() {
                   Din nuvarande verifieringsstatus
                 </p>
               </div>
-              {trustLevel && <TrustLevelBadge level={trustLevel} />}
+              <TrustLevelBadge level={trustLevel} />
             </div>
             {showUpgrade && (
               <>
@@ -106,5 +106,5 @@ export function Installningar() {
 
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </div>
-  );
+  )
 }

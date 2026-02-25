@@ -1,70 +1,69 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { useAppAuth } from '@/contexts/AuthContext';
-import { Shield, Building2, Globe, Users } from 'lucide-react';
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { useAppAuth } from '@/contexts/AuthContext'
+import { Shield, Building2, Globe, Users } from 'lucide-react'
 
 type LoginView =
   | 'main'
   | 'orgNr'
   | 'manual'
   | 'existingClient'
-  | 'existingLogin';
+  | 'existingLogin'
 
 export function Welcome() {
-  const [view, setView] = useState<LoginView>('main');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const navigate = useNavigate();
+  const [view, setView] = useState<LoginView>('main')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [magicLinkSent, setMagicLinkSent] = useState(false)
+  const navigate = useNavigate()
   const {
+    signIn,
+    signUp,
     signInWithBankID,
-    signInWithEmail,
-    signUpWithOrgNr,
-    signUpManual,
     signInWithMagicLink,
-  } = useAppAuth();
+  } = useAppAuth()
 
   // Org nr form state
-  const [orgNr, setOrgNr] = useState('');
-  const [orgEmail, setOrgEmail] = useState('');
-  const [orgPassword, setOrgPassword] = useState('');
+  const [orgNr, setOrgNr] = useState('')
+  const [orgEmail, setOrgEmail] = useState('')
+  const [orgPassword, setOrgPassword] = useState('')
 
   // Manual form state
-  const [manualName, setManualName] = useState('');
-  const [manualEmail, setManualEmail] = useState('');
-  const [manualPassword, setManualPassword] = useState('');
-  const [manualCountry, setManualCountry] = useState('Sverige');
-  const [manualCompanyInfo, setManualCompanyInfo] = useState('');
+  const [manualName, setManualName] = useState('')
+  const [manualEmail, setManualEmail] = useState('')
+  const [manualPassword, setManualPassword] = useState('')
+  const [manualCountry, setManualCountry] = useState('Sverige')
+  const [manualCompanyInfo, setManualCompanyInfo] = useState('')
 
   // Existing client
-  const [clientEmail, setClientEmail] = useState('');
+  const [clientEmail, setClientEmail] = useState('')
 
   // Login form
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [loginMagicEmail, setLoginMagicEmail] = useState('');
-  const [loginMagicSent, setLoginMagicSent] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginMagicEmail, setLoginMagicEmail] = useState('')
+  const [loginMagicSent, setLoginMagicSent] = useState(false)
 
   const validateOrgNr = (value: string) =>
-    /^\d{6}-\d{4}$/.test(value);
+    /^\d{6}-\d{4}$/.test(value)
 
   const handleAsync = async (fn: () => Promise<void>) => {
-    setError(null);
-    setLoading(true);
+    setError(null)
+    setLoading(true)
     try {
-      await fn();
-      navigate('/dashboard');
+      await fn()
+      navigate('/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Något gick fel');
+      setError(err instanceof Error ? err.message : 'Något gick fel')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 bg-background">
@@ -169,7 +168,7 @@ export function Welcome() {
                   id="orgNr"
                   placeholder="XXXXXX-XXXX"
                   value={orgNr}
-                  onChange={(e) => setOrgNr(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrgNr(e.target.value)}
                 />
                 {orgNr && !validateOrgNr(orgNr) && (
                   <p className="text-xs text-destructive">
@@ -184,7 +183,7 @@ export function Welcome() {
                   type="email"
                   placeholder="din@epost.se"
                   value={orgEmail}
-                  onChange={(e) => setOrgEmail(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrgEmail(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -194,7 +193,7 @@ export function Welcome() {
                   type="password"
                   placeholder="Minst 6 tecken"
                   value={orgPassword}
-                  onChange={(e) => setOrgPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrgPassword(e.target.value)}
                 />
               </div>
               <Button
@@ -207,7 +206,7 @@ export function Welcome() {
                 }
                 onClick={() =>
                   handleAsync(() =>
-                    signUpWithOrgNr(orgEmail, orgPassword, orgNr)
+                    signUp(orgEmail, orgPassword, orgEmail, orgNr)
                   )
                 }
               >
@@ -231,7 +230,7 @@ export function Welcome() {
                   id="manualName"
                   placeholder="Ditt fullständiga namn"
                   value={manualName}
-                  onChange={(e) => setManualName(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setManualName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -241,7 +240,7 @@ export function Welcome() {
                   type="email"
                   placeholder="din@epost.se"
                   value={manualEmail}
-                  onChange={(e) => setManualEmail(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setManualEmail(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -251,7 +250,7 @@ export function Welcome() {
                   type="password"
                   placeholder="Minst 6 tecken"
                   value={manualPassword}
-                  onChange={(e) => setManualPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setManualPassword(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -260,7 +259,7 @@ export function Welcome() {
                   id="manualCountry"
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={manualCountry}
-                  onChange={(e) => setManualCountry(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setManualCountry(e.target.value)}
                 >
                   <option value="Sverige">Sverige</option>
                   <option value="EU">EU</option>
@@ -273,7 +272,7 @@ export function Welcome() {
                   id="manualCompany"
                   placeholder="Företagsnamn och ev. reg.nr"
                   value={manualCompanyInfo}
-                  onChange={(e) => setManualCompanyInfo(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setManualCompanyInfo(e.target.value)}
                 />
               </div>
               {/* TODO: ED-2 — Add file upload for ID copy */}
@@ -290,13 +289,7 @@ export function Welcome() {
                 }
                 onClick={() =>
                   handleAsync(() =>
-                    signUpManual({
-                      name: manualName,
-                      email: manualEmail,
-                      password: manualPassword,
-                      country: manualCountry,
-                      companyInfo: manualCompanyInfo,
-                    })
+                    signUp(manualEmail, manualPassword, manualName)
                   )
                 }
               >
@@ -335,26 +328,26 @@ export function Welcome() {
                       type="email"
                       placeholder="din@epost.se"
                       value={clientEmail}
-                      onChange={(e) => setClientEmail(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setClientEmail(e.target.value)}
                     />
                   </div>
                   <Button
                     className="w-full"
                     disabled={loading || !clientEmail}
                     onClick={async () => {
-                      setError(null);
-                      setLoading(true);
+                      setError(null)
+                      setLoading(true)
                       try {
-                        await signInWithMagicLink(clientEmail);
-                        setMagicLinkSent(true);
+                        await signInWithMagicLink(clientEmail)
+                        setMagicLinkSent(true)
                       } catch (err) {
                         setError(
                           err instanceof Error
                             ? err.message
                             : 'Något gick fel'
-                        );
+                        )
                       } finally {
-                        setLoading(false);
+                        setLoading(false)
                       }
                     }}
                   >
@@ -381,7 +374,7 @@ export function Welcome() {
                   type="email"
                   placeholder="din@epost.se"
                   value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginEmail(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -390,7 +383,7 @@ export function Welcome() {
                   id="loginPassword"
                   type="password"
                   value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginPassword(e.target.value)}
                 />
               </div>
               <Button
@@ -398,7 +391,7 @@ export function Welcome() {
                 disabled={loading || !loginEmail || !loginPassword}
                 onClick={() =>
                   handleAsync(() =>
-                    signInWithEmail(loginEmail, loginPassword)
+                    signIn(loginEmail, loginPassword)
                   )
                 }
               >
@@ -436,25 +429,25 @@ export function Welcome() {
                       type="email"
                       placeholder="E-post för magic link"
                       value={loginMagicEmail}
-                      onChange={(e) => setLoginMagicEmail(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginMagicEmail(e.target.value)}
                     />
                     <Button
                       variant="secondary"
                       disabled={loading || !loginMagicEmail}
                       onClick={async () => {
-                        setError(null);
-                        setLoading(true);
+                        setError(null)
+                        setLoading(true)
                         try {
-                          await signInWithMagicLink(loginMagicEmail);
-                          setLoginMagicSent(true);
+                          await signInWithMagicLink(loginMagicEmail)
+                          setLoginMagicSent(true)
                         } catch (err) {
                           setError(
                             err instanceof Error
                               ? err.message
                               : 'Något gick fel'
-                          );
+                          )
                         } finally {
-                          setLoading(false);
+                          setLoading(false)
                         }
                       }}
                     >
@@ -470,7 +463,7 @@ export function Welcome() {
         )}
       </div>
     </div>
-  );
+  )
 }
 
 function BackButton({ onClick }: { onClick: () => void }) {
@@ -481,5 +474,5 @@ function BackButton({ onClick }: { onClick: () => void }) {
     >
       &larr; Tillbaka
     </button>
-  );
+  )
 }

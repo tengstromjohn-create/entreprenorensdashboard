@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import { Header } from './Header';
-import { Sidebar } from './Sidebar';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { useAppAuth } from '@/contexts/AuthContext';
-import { Badge } from '@/components/ui/badge';
+import { useState } from 'react'
+import { Outlet } from 'react-router-dom'
+import { Header } from './Header'
+import { Sidebar } from './Sidebar'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { useAppAuth } from '@/contexts/AuthContext'
+import { Badge } from '@/components/ui/badge'
 
 export function DashboardLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { trustLevel } = useAppAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { trustLevel } = useAppAuth()
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,5 +64,5 @@ export function DashboardLayout() {
         </aside>
       </div>
     </div>
-  );
+  )
 }

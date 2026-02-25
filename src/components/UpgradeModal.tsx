@@ -4,23 +4,23 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { useAppAuth } from '@/contexts/AuthContext';
-import { Shield } from 'lucide-react';
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { useAppAuth } from '@/contexts/AuthContext'
+import { Shield } from 'lucide-react'
 
 interface UpgradeModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
 export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
-  const { signInWithBankID } = useAppAuth();
+  const { signInWithBankID } = useAppAuth()
 
   const handleBankID = async () => {
-    await signInWithBankID();
-    onOpenChange(false);
-  };
+    await signInWithBankID()
+    onOpenChange(false)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -57,5 +57,5 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

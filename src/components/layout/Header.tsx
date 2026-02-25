@@ -1,14 +1,14 @@
-import { LogOut, Menu } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { TrustLevelBadge } from '@/components/TrustLevelBadge';
-import { useAppAuth } from '@/contexts/AuthContext';
+import { LogOut, Menu } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { TrustLevelBadge } from '@/components/TrustLevelBadge'
+import { useAppAuth } from '@/contexts/AuthContext'
 
 interface HeaderProps {
-  onToggleSidebar?: () => void;
+  onToggleSidebar?: () => void
 }
 
 export function Header({ onToggleSidebar }: HeaderProps) {
-  const { user, trustLevel, isAuthenticated, signOut } = useAppAuth();
+  const { profile, trustLevel, isAuthenticated, signOut } = useAppAuth()
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -37,17 +37,15 @@ export function Header({ onToggleSidebar }: HeaderProps) {
         <div className="flex-1" />
 
         {/* User info */}
-        {isAuthenticated && user && (
+        {isAuthenticated && (
           <div className="flex items-center gap-3">
             <span className="hidden text-sm sm:inline-block">
-              {user.name}
+              {profile?.display_name}
             </span>
-            {trustLevel && (
-              <TrustLevelBadge
-                level={trustLevel}
-                className="hidden sm:inline-flex"
-              />
-            )}
+            <TrustLevelBadge
+              level={trustLevel}
+              className="hidden sm:inline-flex"
+            />
             <Button variant="ghost" size="sm" onClick={signOut}>
               <LogOut className="size-4" />
               <span className="hidden sm:inline-block">Logga ut</span>
@@ -56,5 +54,5 @@ export function Header({ onToggleSidebar }: HeaderProps) {
         )}
       </div>
     </header>
-  );
+  )
 }

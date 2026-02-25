@@ -1,16 +1,16 @@
-import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAppAuth } from '@/contexts/AuthContext';
-import { House, Wrench, BookOpen, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAppAuth } from '@/contexts/AuthContext'
+import { House, Wrench, BookOpen, ArrowRight } from 'lucide-react'
 
 export function Dashboard() {
-  const { user, trustLevel } = useAppAuth();
+  const { profile, trustLevel } = useAppAuth()
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Välkommen{user?.name ? `, ${user.name}` : ''}
+          Välkommen{profile?.display_name ? `, ${profile.display_name}` : ''}
         </h1>
         <p className="text-muted-foreground">
           Här är en översikt av ditt dashboard.
@@ -86,5 +86,5 @@ export function Dashboard() {
 
       {/* TODO: ED-3 — Add recent activity feed, notifications, and quick actions */}
     </div>
-  );
+  )
 }

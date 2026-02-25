@@ -5,209 +5,187 @@ import {
   useEffect,
   useCallback,
   type ReactNode,
-} from 'react';
-import { useAuth as useOidcAuth } from 'react-oidc-context';
-import { supabase } from '@/lib/supabase';
-import type { Session } from '@supabase/supabase-js';
+} from 'react'
+import { useAuth as useOidcAuth } from 'react-oidc-context'
+import { supabase } from '@/lib/supabase'
+import type { User } from '@supabase/supabase-js'
 
-export type TrustLevel =
-  | 'bankid'
-  | 'existing_client'
-  | 'verified_manual'
-  | 'org_nr'
-  | 'pending_manual';
+export type TrustLevel = 'org_nr' | 'pending_manual' | 'verified_manual' | 'bankid' | 'existing_client'
 
-export interface AppUser {
-  id: string;
-  name: string;
-  email: string;
-}
-
-export interface ManualSignupData {
-  name: string;
-  email: string;
-  password: string;
-  country: string;
-  companyInfo: string;
-  // TODO: ED-2 — Add file upload field for ID copy
+export interface UserProfile {
+  id: string
+  display_name: string
+  email: string
+  trust_level: TrustLevel
+  org_number?: string
+  personal_number_hash?: string
+  bankid_verified_at?: string
+  conflict_check_result?: 'clear' | 'flagged'
+  conflict_checked_at?: string
+  created_at: string
+  updated_at: string
 }
 
 interface AuthContextType {
-  user: AppUser | null;
-  trustLevel: TrustLevel | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  products: string[];
-  signInWithBankID: () => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithOrgNr: (
-    email: string,
-    password: string,
-    orgNr: string
-  ) => Promise<void>;
-  signUpManual: (data: ManualSignupData) => Promise<void>;
-  signInWithMagicLink: (email: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  user: User | null
+  profile: UserProfile | null
+  trustLevel: TrustLevel
+  isAuthenticated: boolean
+  isLoading: boolean
+  products: string[]
+  signIn: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, displayName: string, orgNumber?: string) => Promise<void>
+  signOut: () => Promise<void>
+  signInWithBankID: () => Promise<void>
+  signInWithMagicLink: (email: string) => Promise<void>
+  refreshProfile: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthContextProvider({ children }: { children: ReactNode }) {
-  const oidcAuth = useOidcAuth();
-  const [supabaseSession, setSupabaseSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<AppUser | null>(null);
-  const [trustLevel, setTrustLevel] = useState<TrustLevel | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [products] = useState<string[]>([]); // TODO: ED-2 — Populate from product_access table
+  const oidcAuth = useOidcAuth()
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [trustLevel, setTrustLevel] = useState<TrustLevel>('org_nr')
+  const [isLoading, setIsLoading] = useState(true)
+  const [products] = useState<string[]>([]) // TODO: ED-3 — Populate from product_access table
+
+  const fetchProfile = useCallback(async (userId: string) => {
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    if (data) {
+      setProfile(data as UserProfile)
+      setTrustLevel(data.trust_level || 'org_nr')
+    }
+  }, [])
 
   // Listen for Supabase auth state changes
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSupabaseSession(session);
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        setUser({
-          id: session.user.id,
-          name:
-            session.user.user_metadata?.name || session.user.email || '',
-          email: session.user.email || '',
-        });
-        setTrustLevel(
-          (session.user.user_metadata?.trust_level as TrustLevel) || 'org_nr'
-        );
+        setUser(session.user)
+        await fetchProfile(session.user.id)
       } else if (!oidcAuth.isAuthenticated) {
-        setUser(null);
-        setTrustLevel(null);
+        setUser(null)
+        setProfile(null)
+        setTrustLevel('org_nr')
       }
-      setIsLoading(false);
-    });
+      setIsLoading(false)
+    })
 
     // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        setSupabaseSession(session);
-        setUser({
-          id: session.user.id,
-          name:
-            session.user.user_metadata?.name || session.user.email || '',
-          email: session.user.email || '',
-        });
-        setTrustLevel(
-          (session.user.user_metadata?.trust_level as TrustLevel) || 'org_nr'
-        );
+        setUser(session.user)
+        await fetchProfile(session.user.id)
       }
-      setIsLoading(false);
-    });
+      setIsLoading(false)
+    })
 
-    return () => subscription.unsubscribe();
-  }, [oidcAuth.isAuthenticated]);
+    return () => subscription.unsubscribe()
+  }, [oidcAuth.isAuthenticated, fetchProfile])
 
   // Handle OIDC auth (BankID) — sync OIDC user to local state
   useEffect(() => {
     if (oidcAuth.isAuthenticated && oidcAuth.user) {
-      setUser({
-        id: oidcAuth.user.profile.sub,
-        name: (oidcAuth.user.profile.name as string) || '',
-        email: (oidcAuth.user.profile.email as string) || '',
-      });
-      setTrustLevel('bankid');
-      setIsLoading(false);
+      // BankID users get trust_level='bankid' via the bankid-auth edge function
+      // For now, set a temporary user object until the edge function creates the Supabase user
+      setTrustLevel('bankid')
+      setIsLoading(false)
     }
-  }, [oidcAuth.isAuthenticated, oidcAuth.user]);
+  }, [oidcAuth.isAuthenticated, oidcAuth.user])
 
-  const isAuthenticated = !!(
-    user && (supabaseSession || oidcAuth.isAuthenticated)
-  );
+  const isAuthenticated = !!(user || oidcAuth.isAuthenticated)
 
-  const signInWithBankID = useCallback(async () => {
-    await oidcAuth.signinRedirect();
-  }, [oidcAuth]);
+  const signIn = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+  }, [])
 
-  const signInWithEmail = useCallback(
-    async (email: string, password: string) => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) throw error;
-    },
-    []
-  );
-
-  const signUpWithOrgNr = useCallback(
-    async (email: string, password: string, orgNr: string) => {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            org_nr: orgNr,
-            trust_level: 'org_nr',
-          },
-        },
-      });
-      if (error) throw error;
-    },
-    []
-  );
-
-  const signUpManual = useCallback(async (data: ManualSignupData) => {
-    // TODO: ED-2 — Handle file upload for ID copy before signup
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
+  const signUp = useCallback(async (email: string, password: string, displayName: string, orgNumber?: string) => {
+    const trustLevel: TrustLevel = orgNumber ? 'org_nr' : 'pending_manual'
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
       options: {
         data: {
-          name: data.name,
-          country: data.country,
-          company_info: data.companyInfo,
-          trust_level: 'pending_manual',
+          display_name: displayName,
+          trust_level: trustLevel,
+          ...(orgNumber && { org_number: orgNumber }),
         },
       },
-    });
-    if (error) throw error;
-  }, []);
+    })
+    if (error) throw error
+
+    // Create user_profiles row
+    if (data.user) {
+      await supabase.from('user_profiles').insert({
+        id: data.user.id,
+        display_name: displayName,
+        email,
+        trust_level: trustLevel,
+        ...(orgNumber && { org_number: orgNumber }),
+      })
+    }
+  }, [])
+
+  const signInWithBankID = useCallback(async () => {
+    await oidcAuth.signinRedirect()
+  }, [oidcAuth])
 
   const signInWithMagicLink = useCallback(async (email: string) => {
-    const { error } = await supabase.auth.signInWithOtp({ email });
-    if (error) throw error;
-  }, []);
+    const { error } = await supabase.auth.signInWithOtp({ email })
+    if (error) throw error
+  }, [])
 
   const signOut = useCallback(async () => {
     if (oidcAuth.isAuthenticated) {
-      await oidcAuth.removeUser();
+      await oidcAuth.removeUser()
     }
-    await supabase.auth.signOut();
-    setUser(null);
-    setTrustLevel(null);
-  }, [oidcAuth]);
+    await supabase.auth.signOut()
+    setUser(null)
+    setProfile(null)
+    setTrustLevel('org_nr')
+  }, [oidcAuth])
+
+  const refreshProfile = useCallback(async () => {
+    if (user) {
+      await fetchProfile(user.id)
+    }
+  }, [user, fetchProfile])
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        profile,
         trustLevel,
         isAuthenticated,
         isLoading,
         products,
-        signInWithBankID,
-        signInWithEmail,
-        signUpWithOrgNr,
-        signUpManual,
-        signInWithMagicLink,
+        signIn,
+        signUp,
         signOut,
+        signInWithBankID,
+        signInWithMagicLink,
+        refreshProfile,
       }}
     >
       {children}
     </AuthContext.Provider>
-  );
+  )
 }
 
 export function useAppAuth() {
-  const context = useContext(AuthContext);
+  const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error('useAppAuth must be used within an AuthContextProvider');
+    throw new Error('useAppAuth must be used within an AuthContextProvider')
   }
-  return context;
+  return context
 }
