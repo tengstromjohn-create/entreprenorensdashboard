@@ -1,34 +1,37 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAppAuth } from '@/contexts/AuthContext';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Welcome } from '@/pages/Welcome';
-import { AuthCallback } from '@/pages/AuthCallback';
-import { Dashboard } from '@/pages/Dashboard';
-import { Bolag } from '@/pages/Bolag';
-import { Verktyg } from '@/pages/Verktyg';
-import { StartupKit } from '@/pages/StartupKit';
-import { HealthCheck } from '@/pages/HealthCheck';
-import { Utveckling } from '@/pages/Utveckling';
-import { Installningar } from '@/pages/Installningar';
-import { Admin } from '@/pages/Admin';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { Welcome } from '@/pages/Welcome'
+import { AuthCallback } from '@/pages/AuthCallback'
+import { DashboardHome } from '@/components/dashboard/DashboardHome'
+import { CompanyZone } from '@/components/dashboard/CompanyZone'
+import { ToolsZone } from '@/components/dashboard/ToolsZone'
+import { DevelopmentZone } from '@/components/dashboard/DevelopmentZone'
+import { SettingsPage } from '@/components/dashboard/SettingsPage'
+import { StartupKit } from '@/pages/StartupKit'
+import { HealthCheck } from '@/pages/HealthCheck'
+import { Admin } from '@/pages/Admin'
 
 function RootRedirect() {
-  const { isAuthenticated, isLoading } = useAppAuth();
+  const { isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-muted-foreground">Laddar...</div>
+      <div className="flex h-screen items-center justify-center bg-[#FAFAF8]">
+        <div className="text-center">
+          <h1 className="text-lg font-bold text-[#2D3436]">Grundat</h1>
+          <p className="text-sm text-gray-400 mt-1">Laddar...</p>
+        </div>
       </div>
-    );
+    )
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/dashboard" replace />
   }
 
-  return <Welcome />;
+  return <Welcome />
 }
 
 function App() {
@@ -45,13 +48,13 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Dashboard />} />
-          <Route path="bolag" element={<Bolag />} />
-          <Route path="verktyg" element={<Verktyg />} />
+          <Route index element={<DashboardHome />} />
+          <Route path="bolag" element={<CompanyZone />} />
+          <Route path="verktyg" element={<ToolsZone />} />
           <Route path="verktyg/startup-kit" element={<StartupKit />} />
           <Route path="verktyg/health-check" element={<HealthCheck />} />
-          <Route path="utveckling" element={<Utveckling />} />
-          <Route path="installningar" element={<Installningar />} />
+          <Route path="utveckling" element={<DevelopmentZone />} />
+          <Route path="installningar" element={<SettingsPage />} />
         </Route>
         <Route
           path="/admin"
@@ -66,7 +69,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
-  );
+  )
 }
 
-export default App;
+export default App

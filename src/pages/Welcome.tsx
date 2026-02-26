@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { useAppAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { Shield, Building2, Globe, Users } from 'lucide-react'
 
 type LoginView =
@@ -26,7 +26,7 @@ export function Welcome() {
     signUp,
     signInWithBankID,
     signInWithMagicLink,
-  } = useAppAuth()
+  } = useAuth()
 
   // Org nr form state
   const [orgNr, setOrgNr] = useState('')
@@ -70,17 +70,12 @@ export function Welcome() {
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
-          <a
-            href="https://johntengstrom.se"
-            className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
-          >
-            John Tengström
-          </a>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Entreprenörens Dashboard
+          <h1 className="text-3xl font-bold tracking-tight text-[#2D3436]">
+            Grundat
           </h1>
+          <p className="text-xs text-gray-400 -mt-1">av John Tengström</p>
           <p className="text-lg text-muted-foreground">
-            Ditt bolag. Dina verktyg. Din utveckling.
+            Bygg bolaget på rätt grund.
           </p>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
             Samla allt du behöver som entreprenör på ett ställe — från

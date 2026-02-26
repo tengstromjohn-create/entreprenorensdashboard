@@ -189,3 +189,6 @@ export function useAppAuth() {
   }
   return context
 }
+
+// Alias for cleaner imports in new components
+export const useAuth = useAppAuth

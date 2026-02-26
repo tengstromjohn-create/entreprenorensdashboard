@@ -1,29 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import {
-  House,
-  Wrench,
-  BookOpen,
-  Settings,
-  Calendar,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
-import { TrustLevelBadge } from '@/components/TrustLevelBadge'
-import { useAppAuth } from '@/contexts/AuthContext'
-import { cn } from '@/lib/utils'
-import { useState } from 'react'
-import { UpgradeModal } from '@/components/UpgradeModal'
+import { Home, Building2, Wrench, BookOpen, Settings, Calendar, X } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { TrustBadge } from '@/components/shared/TrustBadge'
 
 const navItems = [
-  { to: '/dashboard/bolag', icon: House, label: 'Mitt bolag' },
+  { to: '/dashboard', icon: Home, label: 'Hem', end: true },
+  { to: '/dashboard/bolag', icon: Building2, label: 'Mitt bolag' },
   { to: '/dashboard/verktyg', icon: Wrench, label: 'Verktyg' },
-  {
-    to: '/dashboard/utveckling',
-    icon: BookOpen,
-    label: 'Min utveckling',
-    comingSoon: true,
-  },
+  { to: '/dashboard/utveckling', icon: BookOpen, label: 'Min utveckling' },
 ]
 
 const secondaryItems = [
@@ -31,99 +15,91 @@ const secondaryItems = [
 ]
 
 interface SidebarProps {
-  className?: string
-  onNavigate?: () => void
+  onClose?: () => void
+  mobile?: boolean
 }
 
-export function Sidebar({ className, onNavigate }: SidebarProps) {
-  const { trustLevel, products } = useAppAuth()
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const showUpgrade =
-    trustLevel === 'org_nr' || trustLevel === 'pending_manual'
-  const isSubscriber = products.length > 0 // TODO: ED-3 — Check for development subscription
+export function Sidebar({ onClose, mobile }: SidebarProps) {
+  const { profile, trustLevel } = useAuth()
 
   return (
-    <aside className={cn('flex flex-col gap-2 py-4', className)}>
-      <nav className="flex flex-col gap-1 px-3">
+    <aside className={`flex flex-col h-full bg-white ${mobile ? 'w-64' : 'w-60'}`}>
+      {/* Header */}
+      <div className="px-5 py-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-[#2D3436] tracking-tight">Grundat</h1>
+          <p className="text-[10px] text-gray-400 -mt-0.5">av John Tengström</p>
+        </div>
+        {mobile && (
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        )}
+      </div>
+
+      {/* Primary nav */}
+      <nav className="flex-1 px-3 space-y-1">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            onClick={onNavigate}
+            end={item.end}
+            onClick={onClose}
             className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-              )
+                  ? 'bg-[#F5F5F0] text-[#2D3436]'
+                  : 'text-gray-500 hover:bg-[#F5F5F0]/50 hover:text-[#2D3436]'
+              }`
             }
           >
-            <item.icon className="size-4 shrink-0" />
+            <item.icon size={16} />
             {item.label}
-            {item.comingSoon && !isSubscriber && (
-              <Badge
-                variant="secondary"
-                className="ml-auto text-[10px] px-1.5 py-0"
-              >
-                Kommer snart
-              </Badge>
-            )}
           </NavLink>
         ))}
-      </nav>
 
-      <Separator className="mx-3" />
+        <div className="h-px bg-gray-100 my-3" />
 
-      <nav className="flex flex-col gap-1 px-3">
         {secondaryItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            onClick={onNavigate}
+            onClick={onClose}
             className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-              )
+                  ? 'bg-[#F5F5F0] text-[#2D3436]'
+                  : 'text-gray-500 hover:bg-[#F5F5F0]/50 hover:text-[#2D3436]'
+              }`
             }
           >
-            <item.icon className="size-4 shrink-0" />
+            <item.icon size={16} />
             {item.label}
           </NavLink>
         ))}
+
         <a
           href="https://johntengstrom.se/boka"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 hover:bg-[#F5F5F0]/50 hover:text-[#2D3436] transition-colors"
         >
-          <Calendar className="size-4 shrink-0" />
+          <Calendar size={16} />
           Boka samtal
         </a>
       </nav>
 
-      <Separator className="mx-3" />
-
-      <div className="px-3 mt-auto">
-        <div className="space-y-2">
-          <TrustLevelBadge level={trustLevel} />
-          {showUpgrade && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full text-xs"
-              onClick={() => setUpgradeOpen(true)}
-            >
-              Uppgradera
-            </Button>
-          )}
+      {/* Footer */}
+      <div className="px-5 py-4 border-t border-gray-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-[#2D3436] truncate">
+              {profile?.display_name || 'Entreprenör'}
+            </p>
+          </div>
+          <TrustBadge level={trustLevel} size="sm" />
         </div>
       </div>
-
-      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </aside>
   )
 }
