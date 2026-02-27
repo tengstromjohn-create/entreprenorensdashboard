@@ -32,7 +32,6 @@ interface AuthContextType {
   trustLevel: TrustLevel
   isAuthenticated: boolean
   isLoading: boolean
-  products: string[]
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, displayName: string, orgNumber?: string) => Promise<void>
   signOut: () => Promise<void>
@@ -49,8 +48,6 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [trustLevel, setTrustLevel] = useState<TrustLevel>('org_nr')
   const [isLoading, setIsLoading] = useState(true)
-  const [products] = useState<string[]>([]) // TODO: ED-3 — Populate from product_access table
-
   const fetchProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('user_profiles')
@@ -168,7 +165,6 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
         trustLevel,
         isAuthenticated,
         isLoading,
-        products,
         signIn,
         signUp,
         signOut,

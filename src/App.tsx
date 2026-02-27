@@ -53,6 +53,22 @@ function App() {
           <Route path="verktyg" element={<ToolsZone />} />
           <Route path="verktyg/startup-kit" element={<StartupKit />} />
           <Route path="verktyg/health-check" element={<HealthCheck />} />
+          <Route path="verktyg/readiness-check" element={
+            <div className="space-y-4">
+              <h1 className="text-xl font-bold text-[#2D3436]">Readiness Check</h1>
+              <div className="bg-[#F5F5F0] rounded-lg p-8 text-center">
+                <p className="text-gray-500">Readiness Check — kommer snart</p>
+              </div>
+            </div>
+          } />
+          <Route path="verktyg/checklistor" element={
+            <div className="space-y-4">
+              <h1 className="text-xl font-bold text-[#2D3436]">Checklistor & Mallar</h1>
+              <div className="bg-[#F5F5F0] rounded-lg p-8 text-center">
+                <p className="text-gray-500">Checklistor — kommer snart</p>
+              </div>
+            </div>
+          } />
           <Route path="utveckling" element={<DevelopmentZone />} />
           <Route path="installningar" element={<SettingsPage />} />
         </Route>

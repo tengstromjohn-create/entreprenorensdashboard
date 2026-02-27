@@ -15,11 +15,20 @@ export function useProducts(userId: string | undefined) {
     try {
       const { data, error } = await supabase
         .from('product_access')
-        .select('product, source, expires_at, is_active')
+        .select('product, source, expires_at')
         .eq('user_id', userId)
-        .eq('is_active', true)
       if (error) throw error
-      setProducts(data || [])
+      // Filtrera bort utgångna produkter i klienten
+      const now = new Date().toISOString()
+      const active = (data || []).filter(
+        p => !p.expires_at || p.expires_at > now
+      )
+      setProducts(active.map(p => ({
+        product: p.product,
+        source: p.source || '',
+        expires_at: p.expires_at,
+        is_active: true,
+      })))
     } catch (err) {
       console.error('Failed to fetch products:', err)
     } finally {

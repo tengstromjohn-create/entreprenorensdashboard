@@ -2,15 +2,24 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './Sidebar'
+import { UpgradeModal } from '@/components/shared/UpgradeModal'
+import { useAuth } from '@/contexts/AuthContext'
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const { trustLevel, signInWithBankID } = useAuth()
+
+  const handleBankId = async () => {
+    setUpgradeOpen(false)
+    await signInWithBankID()
+  }
 
   return (
     <div className="min-h-screen bg-[#FAFAF8] flex">
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-60 border-r border-gray-100">
-        <Sidebar />
+        <Sidebar onUpgrade={() => setUpgradeOpen(true)} />
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -21,7 +30,11 @@ export function DashboardLayout() {
             onClick={() => setSidebarOpen(false)}
           />
           <div className="fixed inset-y-0 left-0 z-50 lg:hidden">
-            <Sidebar mobile onClose={() => setSidebarOpen(false)} />
+            <Sidebar
+              mobile
+              onClose={() => setSidebarOpen(false)}
+              onUpgrade={() => { setUpgradeOpen(true); setSidebarOpen(false) }}
+            />
           </div>
         </>
       )}
@@ -43,6 +56,14 @@ export function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Global upgrade modal */}
+      <UpgradeModal
+        isOpen={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        onBankId={handleBankId}
+        currentLevel={trustLevel}
+      />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Building2, Wrench, BookOpen, Settings, Calendar, X } from 'lucide-react'
+import { Home, Building2, Wrench, BookOpen, Settings, Calendar, X, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { TrustBadge } from '@/components/shared/TrustBadge'
 
@@ -17,9 +17,10 @@ const secondaryItems = [
 interface SidebarProps {
   onClose?: () => void
   mobile?: boolean
+  onUpgrade?: () => void
 }
 
-export function Sidebar({ onClose, mobile }: SidebarProps) {
+export function Sidebar({ onClose, mobile, onUpgrade }: SidebarProps) {
   const { profile, trustLevel } = useAuth()
 
   return (
@@ -88,6 +89,19 @@ export function Sidebar({ onClose, mobile }: SidebarProps) {
           Boka samtal
         </a>
       </nav>
+
+      {/* Upgrade CTA — visas bara för org_nr och pending_manual */}
+      {(trustLevel === 'org_nr' || trustLevel === 'pending_manual') && onUpgrade && (
+        <div className="px-3 mb-2">
+          <button
+            onClick={() => { onUpgrade(); onClose?.() }}
+            className="w-full bg-[#2D3436] text-white rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-[#3d4446] transition-colors flex items-center justify-center gap-2"
+          >
+            <ShieldCheck size={14} />
+            Uppgradera till BankID
+          </button>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-gray-100">

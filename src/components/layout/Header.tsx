@@ -1,6 +1,6 @@
 import { LogOut, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { TrustLevelBadge } from '@/components/TrustLevelBadge'
+import { TrustBadge } from '@/components/shared/TrustBadge'
 import { useAppAuth } from '@/contexts/AuthContext'
 
 interface HeaderProps {
@@ -42,9 +42,9 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             <span className="hidden text-sm sm:inline-block">
               {profile?.display_name}
             </span>
-            <TrustLevelBadge
+            <TrustBadge
               level={trustLevel}
-              className="hidden sm:inline-flex"
+              size="sm"
             />
             <Button variant="ghost" size="sm" onClick={signOut}>
               <LogOut className="size-4" />
