@@ -1,13 +1,11 @@
 import { WebStorageStateStore } from 'oidc-client-ts';
 
 export const oidcConfig = {
-  authority:
-    import.meta.env.VITE_SCRIVE_OIDC_AUTHORITY ||
-    'https://testbed-eid.scrive.com/oidc',
+  authority: import.meta.env.VITE_OIDC_AUTHORITY || '',
   client_id: import.meta.env.VITE_SCRIVE_CLIENT_ID || '',
-  redirect_uri: `${window.location.origin}/auth/callback`,
-  scope: 'openid profile',
+  client_secret: import.meta.env.VITE_SCRIVE_CLIENT_SECRET || undefined,
+  redirect_uri: `${window.location.origin}/callback`,
+  scope: 'openid',
   response_type: 'code' as const,
   userStore: new WebStorageStateStore({ store: window.sessionStorage }),
-  extraQueryParams: { acr_values: 'urn:scrive:eid:se:bankid' },
 };

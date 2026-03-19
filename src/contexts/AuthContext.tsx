@@ -48,6 +48,26 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [trustLevel, setTrustLevel] = useState<TrustLevel>('org_nr')
   const [isLoading, setIsLoading] = useState(true)
+
+  // Debug: log OIDC state changes
+  useEffect(() => {
+    console.log('[AuthContext] oidcAuth.isLoading:', oidcAuth.isLoading)
+    console.log('[AuthContext] oidcAuth.isAuthenticated:', oidcAuth.isAuthenticated)
+    console.log('[AuthContext] oidcAuth.error:', oidcAuth.error?.message)
+    console.log('[AuthContext] own isLoading:', isLoading)
+  }, [oidcAuth.isLoading, oidcAuth.isAuthenticated, oidcAuth.error, isLoading])
+
+  // Timeout fallback: if still loading after 5s, stop waiting
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        console.warn('[AuthContext] Loading timeout after 5s — forcing isLoading=false')
+        setIsLoading(false)
+      }
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [isLoading])
+
   const fetchProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('user_profiles')
