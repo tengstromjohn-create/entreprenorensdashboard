@@ -57,16 +57,16 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
     console.log('[AuthContext] own isLoading:', isLoading)
   }, [oidcAuth.isLoading, oidcAuth.isAuthenticated, oidcAuth.error, isLoading])
 
-  // Timeout fallback: if still loading after 5s, stop waiting
+  // Timeout fallback: if still loading after 8s, stop waiting
   useEffect(() => {
     const timer = setTimeout(() => {
       if (isLoading) {
-        console.warn('[AuthContext] Loading timeout after 5s — forcing isLoading=false')
+        console.warn('[AuthContext] Loading timeout after 8s — forcing isLoading=false. OIDC isLoading:', oidcAuth.isLoading, 'error:', oidcAuth.error?.message)
         setIsLoading(false)
       }
-    }, 5000)
+    }, 8000)
     return () => clearTimeout(timer)
-  }, [isLoading])
+  }, [isLoading, oidcAuth.isLoading, oidcAuth.error])
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
