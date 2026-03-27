@@ -4,6 +4,7 @@ import { AuthProvider } from 'react-oidc-context';
 import { oidcConfig } from '@/lib/auth';
 import { AuthContextProvider } from '@/contexts/AuthContext';
 import { Toaster } from '@/components/ui/sonner';
+import { SiteGate } from '@/components/SiteGate';
 import './index.css';
 import App from './App';
 
@@ -28,12 +29,14 @@ function Root() {
   }
 
   return (
-    <AuthProvider {...oidcConfig}>
-      <AuthContextProvider>
-        <App />
-        <Toaster />
-      </AuthContextProvider>
-    </AuthProvider>
+    <SiteGate>
+      <AuthProvider {...oidcConfig}>
+        <AuthContextProvider>
+          <App />
+          <Toaster />
+        </AuthContextProvider>
+      </AuthProvider>
+    </SiteGate>
   );
 }
 
