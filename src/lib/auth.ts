@@ -1,13 +1,28 @@
 import { WebStorageStateStore } from 'oidc-client-ts';
 
+/**
+ * OIDC-konfiguration för Signicat eID Hub.
+ *
+ * Säkerhetsmodell: Public Client + PKCE (S1, 2026-05-17).
+ * `client_secret` finns INTE i frontend — Vite skulle exponera den till klient-bundlen.
+ * PKCE aktiveras automatiskt av oidc-client-ts när `response_type: 'code'` och inget secret ges.
+ *
+ * Tenant: astra-advokater.sandbox.signicat.com (sandbox per 2026-05-17).
+ * Redirect URIs konfigureras i Signicat-portalen — alla tre måste vara aktiva:
+ *   - http://localhost:5173/callback           (dev)
+ *   - https://entreprenorensdashboard.vercel.app/callback  (Vercel preview)
+ *   - https://grundat.ai/callback              (produktion)
+ */
 export const oidcConfig = {
   authority: import.meta.env.VITE_OIDC_AUTHORITY || '',
-  client_id: import.meta.env.VITE_SCRIVE_CLIENT_ID || '',
-  client_secret: import.meta.env.VITE_SCRIVE_CLIENT_SECRET || undefined,
+  client_id: import.meta.env.VITE_SIGNICAT_CLIENT_ID || '',
   redirect_uri: import.meta.env.DEV
     ? 'http://localhost:5173/callback'
     : 'https://grundat.ai/callback',
   scope: 'openid',
   response_type: 'code' as const,
+  // PKCE: automatiskt aktiverat när client_secret saknas och response_type är 'code'.
+  // code_challenge_method 'S256' är default i oidc-client-ts v3.
+  loadUserInfo: false, // Vi använder bara id_token; ingen extra UserInfo-rundtur behövs
   userStore: new WebStorageStateStore({ store: window.sessionStorage }),
 };

@@ -9,19 +9,19 @@ import './index.css';
 import App from './App';
 
 console.log('[Auth Init] OIDC authority:', import.meta.env.VITE_OIDC_AUTHORITY);
-console.log('[Auth Init] Client ID:', import.meta.env.VITE_SCRIVE_CLIENT_ID);
-console.log('[Auth Init] Client secret set:', !!import.meta.env.VITE_SCRIVE_CLIENT_SECRET);
+console.log('[Auth Init] Client ID:', import.meta.env.VITE_SIGNICAT_CLIENT_ID);
+console.log('[Auth Init] Mode: PKCE Public Client (inget client_secret i frontend)');
 
 function Root() {
-  if (!import.meta.env.VITE_SCRIVE_CLIENT_ID) {
+  if (!import.meta.env.VITE_SIGNICAT_CLIENT_ID) {
     console.error(
-      '[Auth] VITE_SCRIVE_CLIENT_ID is missing or empty in .env — OIDC cannot initialize.'
+      '[Auth] VITE_SIGNICAT_CLIENT_ID is missing or empty in .env — OIDC cannot initialize.'
     );
     return (
       <div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
         <h1>Auth ej konfigurerad</h1>
         <p>
-          <code>VITE_SCRIVE_CLIENT_ID</code> saknas i <code>.env</code>.
+          <code>VITE_SIGNICAT_CLIENT_ID</code> saknas i <code>.env</code>.
           Se konsolen för detaljer.
         </p>
       </div>
