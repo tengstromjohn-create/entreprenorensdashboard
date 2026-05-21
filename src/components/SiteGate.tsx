@@ -61,9 +61,9 @@ export function SiteGate({ children }: { children: ReactNode }) {
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
           <div className="bg-white rounded-full p-4 shadow-sm border border-gray-100 mb-4">
-            <Lock size={24} className="text-[#2D3436]" />
+            <Lock size={24} className="text-[#1F2A30]" />
           </div>
-          <h1 className="text-xl font-bold text-[#2D3436]">Grundat.ai</h1>
+          <h1 className="text-xl font-bold text-[#1F2A30]">Grundat.ai</h1>
           <p className="text-sm text-gray-400 mt-1">Plattformen är under uppbyggnad</p>
         </div>
 
@@ -74,8 +74,8 @@ export function SiteGate({ children }: { children: ReactNode }) {
             onChange={(e) => { setInput(e.target.value); setError(false) }}
             placeholder="Ange åtkomstkod"
             autoFocus
-            className={`w-full rounded-lg border bg-white px-4 py-3 text-sm text-[#2D3436] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D3436]/20 transition-colors ${
-              error ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-[#2D3436]'
+            className={`w-full rounded-lg border bg-white px-4 py-3 text-sm text-[#1F2A30] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1F2A30]/20 transition-colors ${
+              error ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-[#1F2A30]'
             }`}
           />
           {error && (
@@ -83,7 +83,7 @@ export function SiteGate({ children }: { children: ReactNode }) {
           )}
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-[#2D3436] text-white py-3 rounded-lg text-sm font-medium hover:bg-[#3d4446] transition-colors"
+            className="w-full flex items-center justify-center gap-2 bg-[#1F2A30] text-white py-3 rounded-lg text-sm font-medium hover:bg-[#2F3A40] transition-colors"
           >
             Öppna
             <ArrowRight size={16} />

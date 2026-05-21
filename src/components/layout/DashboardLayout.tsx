@@ -45,11 +45,11 @@ export function DashboardLayout() {
         <header className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-100 px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="text-[#2D3436] hover:bg-[#F5F5F0] rounded-lg p-1.5 transition-colors"
+            className="text-[#1F2A30] hover:bg-[#F5F5F0] rounded-lg p-1.5 transition-colors"
           >
             <Menu size={20} />
           </button>
-          <span className="text-sm font-bold text-[#2D3436]">Grundat</span>
+          <span className="text-sm font-bold text-[#1F2A30]">Grundat</span>
         </header>
 
         <main className="px-4 py-6 lg:px-8 lg:py-8 max-w-4xl mx-auto">

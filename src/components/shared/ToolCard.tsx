@@ -37,7 +37,7 @@ export function ToolCard({ tool, userTrust, hasPurchased, onNavigate, onUpgrade,
       return (
         <button
           onClick={onUpgrade}
-          className="text-sm text-[#2D3436] font-medium flex items-center gap-1 hover:underline"
+          className="text-sm text-[#1F2A30] font-medium flex items-center gap-1 hover:underline"
         >
           <Lock size={14} />
           Kräver BankID
@@ -48,7 +48,7 @@ export function ToolCard({ tool, userTrust, hasPurchased, onNavigate, onUpgrade,
       return (
         <button
           onClick={() => onPurchase(tool.externalUrl!)}
-          className="bg-[#2D3436] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#3d4446] transition-colors flex items-center gap-1"
+          className="bg-[#1F2A30] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#2F3A40] transition-colors flex items-center gap-1"
         >
           Köp ({tool.price})
           <ExternalLink size={14} />
@@ -59,7 +59,7 @@ export function ToolCard({ tool, userTrust, hasPurchased, onNavigate, onUpgrade,
       return (
         <button
           onClick={() => onNavigate(tool.route!)}
-          className="bg-[#2D3436] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#3d4446] transition-colors flex items-center gap-1"
+          className="bg-[#1F2A30] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#2F3A40] transition-colors flex items-center gap-1"
         >
           {hasPurchased ? 'Använd' : (tool.price === 'Gratis' ? 'Starta' : 'Öppna')}
           <ArrowRight size={14} />
@@ -81,12 +81,12 @@ export function ToolCard({ tool, userTrust, hasPurchased, onNavigate, onUpgrade,
 
       <div className="flex items-start gap-4">
         <div className={`rounded-lg p-2.5 ${isLocked ? 'bg-gray-100' : 'bg-[#F5F5F0]'}`}>
-          <Icon size={22} className={isLocked ? 'text-gray-400' : 'text-[#2D3436]'} />
+          <Icon size={22} className={isLocked ? 'text-gray-400' : 'text-[#1F2A30]'} />
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-[#2D3436] text-sm">{tool.name}</h3>
+            <h3 className="font-semibold text-[#1F2A30] text-sm">{tool.name}</h3>
             {tool.price && (
               <span className={`text-xs font-medium ${tool.price === 'Gratis' ? 'text-green-600' : 'text-gray-500'}`}>
                 {tool.price}

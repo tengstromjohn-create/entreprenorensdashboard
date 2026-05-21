@@ -13,7 +13,7 @@ export function DashboardHome() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-[#2D3436]">
+        <h1 className="text-2xl font-bold text-[#1F2A30]">
           Hej, {profile?.display_name?.split(' ')[0] || 'Entreprenör'}
         </h1>
         <p className="text-gray-500 mt-1">Välkommen till Grundat. Här är din översikt.</p>
@@ -25,8 +25,8 @@ export function DashboardHome() {
           className="text-left bg-[#F5F5F0] rounded-lg p-5 hover:shadow-md transition-shadow"
         >
           <div className="flex items-center gap-2 mb-3">
-            <Rocket size={18} className="text-[#2D3436]" />
-            <span className="font-semibold text-sm text-[#2D3436]">Mitt bolag</span>
+            <Rocket size={18} className="text-[#1F2A30]" />
+            <span className="font-semibold text-sm text-[#1F2A30]">Mitt bolag</span>
           </div>
           <p className="text-sm text-gray-600">
             {companyData ? companyData.name : 'Lägg till ditt bolag'}
@@ -41,8 +41,8 @@ export function DashboardHome() {
           className="text-left bg-[#F5F5F0] rounded-lg p-5 hover:shadow-md transition-shadow"
         >
           <div className="flex items-center gap-2 mb-3">
-            <Activity size={18} className="text-[#2D3436]" />
-            <span className="font-semibold text-sm text-[#2D3436]">Verktyg</span>
+            <Activity size={18} className="text-[#1F2A30]" />
+            <span className="font-semibold text-sm text-[#1F2A30]">Verktyg</span>
           </div>
           <p className="text-sm text-gray-600">
             {latestResult ? `Health Check: ${latestResult.overall_score}/100` : 'Kör din första Health Check'}
@@ -57,8 +57,8 @@ export function DashboardHome() {
           className="text-left bg-[#F5F5F0] rounded-lg p-5 hover:shadow-md transition-shadow"
         >
           <div className="flex items-center gap-2 mb-3">
-            <BookOpen size={18} className="text-[#2D3436]" />
-            <span className="font-semibold text-sm text-[#2D3436]">Min utveckling</span>
+            <BookOpen size={18} className="text-[#1F2A30]" />
+            <span className="font-semibold text-sm text-[#1F2A30]">Min utveckling</span>
             <span className="text-[10px] bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full font-medium">
               Snart
             </span>

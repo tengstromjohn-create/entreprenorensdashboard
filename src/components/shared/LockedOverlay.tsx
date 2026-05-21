@@ -20,7 +20,7 @@ export function LockedOverlay({ reason, ctaText, onCtaClick, children }: Props) 
         <p className="text-sm text-gray-600 font-medium text-center px-4">{reason}</p>
         <button
           onClick={onCtaClick}
-          className="bg-[#2D3436] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#3d4446] transition-colors"
+          className="bg-[#1F2A30] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#2F3A40] transition-colors"
         >
           {ctaText}
         </button>

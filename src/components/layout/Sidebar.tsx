@@ -28,7 +28,7 @@ export function Sidebar({ onClose, mobile, onUpgrade }: SidebarProps) {
       {/* Header */}
       <div className="px-5 py-6 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-[#2D3436] tracking-tight">Grundat</h1>
+          <h1 className="text-lg font-bold text-[#1F2A30] tracking-tight">Grundat</h1>
           <p className="text-[10px] text-gray-400 -mt-0.5">av John Tengström</p>
         </div>
         {mobile && (
@@ -49,8 +49,8 @@ export function Sidebar({ onClose, mobile, onUpgrade }: SidebarProps) {
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-[#F5F5F0] text-[#2D3436]'
-                  : 'text-gray-500 hover:bg-[#F5F5F0]/50 hover:text-[#2D3436]'
+                  ? 'bg-[#F5F5F0] text-[#1F2A30]'
+                  : 'text-gray-500 hover:bg-[#F5F5F0]/50 hover:text-[#1F2A30]'
               }`
             }
           >
@@ -69,8 +69,8 @@ export function Sidebar({ onClose, mobile, onUpgrade }: SidebarProps) {
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-[#F5F5F0] text-[#2D3436]'
-                  : 'text-gray-500 hover:bg-[#F5F5F0]/50 hover:text-[#2D3436]'
+                  ? 'bg-[#F5F5F0] text-[#1F2A30]'
+                  : 'text-gray-500 hover:bg-[#F5F5F0]/50 hover:text-[#1F2A30]'
               }`
             }
           >
@@ -83,7 +83,7 @@ export function Sidebar({ onClose, mobile, onUpgrade }: SidebarProps) {
           href="https://johntengstrom.se/boka"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 hover:bg-[#F5F5F0]/50 hover:text-[#2D3436] transition-colors"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 hover:bg-[#F5F5F0]/50 hover:text-[#1F2A30] transition-colors"
         >
           <Calendar size={16} />
           Boka samtal
@@ -95,7 +95,7 @@ export function Sidebar({ onClose, mobile, onUpgrade }: SidebarProps) {
         <div className="px-3 mb-2">
           <button
             onClick={() => { onUpgrade(); onClose?.() }}
-            className="w-full bg-[#2D3436] text-white rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-[#3d4446] transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-[#1F2A30] text-white rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-[#2F3A40] transition-colors flex items-center justify-center gap-2"
           >
             <ShieldCheck size={14} />
             Uppgradera till BankID
@@ -107,7 +107,7 @@ export function Sidebar({ onClose, mobile, onUpgrade }: SidebarProps) {
       <div className="px-5 py-4 border-t border-gray-100">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-[#2D3436] truncate">
+            <p className="text-sm font-medium text-[#1F2A30] truncate">
               {profile?.display_name || 'Entreprenör'}
             </p>
           </div>

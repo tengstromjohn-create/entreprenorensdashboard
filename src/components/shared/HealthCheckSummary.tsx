@@ -16,8 +16,8 @@ export function HealthCheckSummary({ result, onRunAgain, onViewDetails }: Props)
   return (
     <div className="bg-white rounded-lg border border-gray-100 p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Activity size={18} className="text-[#2D3436]" />
-        <h3 className="font-semibold text-[#2D3436]">Corporate Health Check</h3>
+        <Activity size={18} className="text-[#1F2A30]" />
+        <h3 className="font-semibold text-[#1F2A30]">Corporate Health Check</h3>
         <span className="text-xs text-gray-400 ml-auto">
           {new Date(result.created_at).toLocaleDateString('sv-SE')}
         </span>
@@ -38,7 +38,7 @@ export function HealthCheckSummary({ result, onRunAgain, onViewDetails }: Props)
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-2xl font-bold text-[#2D3436]">{result.overall_score}</span>
+            <span className="text-2xl font-bold text-[#1F2A30]">{result.overall_score}</span>
           </div>
         </div>
 
@@ -55,14 +55,14 @@ export function HealthCheckSummary({ result, onRunAgain, onViewDetails }: Props)
       <div className="flex gap-3 mt-4">
         <button
           onClick={onViewDetails}
-          className="flex-1 bg-[#F5F5F0] text-[#2D3436] py-2 rounded-lg text-sm font-medium hover:bg-[#E8E4DE] transition-colors flex items-center justify-center gap-1"
+          className="flex-1 bg-[#F5F5F0] text-[#1F2A30] py-2 rounded-lg text-sm font-medium hover:bg-[#E8E4DE] transition-colors flex items-center justify-center gap-1"
         >
           Visa detaljer
           <ArrowRight size={14} />
         </button>
         <button
           onClick={onRunAgain}
-          className="flex-1 bg-[#2D3436] text-white py-2 rounded-lg text-sm font-medium hover:bg-[#3d4446] transition-colors"
+          className="flex-1 bg-[#1F2A30] text-white py-2 rounded-lg text-sm font-medium hover:bg-[#2F3A40] transition-colors"
         >
           Kör igen
         </button>

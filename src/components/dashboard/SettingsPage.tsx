@@ -6,18 +6,18 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-[#2D3436]">Inställningar</h1>
+      <h1 className="text-xl font-bold text-[#1F2A30]">Inställningar</h1>
 
       <div className="bg-white rounded-lg border border-gray-100 p-6">
-        <h3 className="font-semibold text-[#2D3436] mb-4">Profil</h3>
+        <h3 className="font-semibold text-[#1F2A30] mb-4">Profil</h3>
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-500">Namn</span>
-            <span className="text-[#2D3436] font-medium">{profile?.display_name || '—'}</span>
+            <span className="text-[#1F2A30] font-medium">{profile?.display_name || '—'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">E-post</span>
-            <span className="text-[#2D3436]">{user?.email || '—'}</span>
+            <span className="text-[#1F2A30]">{user?.email || '—'}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-gray-500">Verifieringsnivå</span>
@@ -26,7 +26,7 @@ export function SettingsPage() {
           {profile?.org_number && (
             <div className="flex justify-between">
               <span className="text-gray-500">Organisationsnummer</span>
-              <span className="text-[#2D3436]">{profile.org_number}</span>
+              <span className="text-[#1F2A30]">{profile.org_number}</span>
             </div>
           )}
         </div>
