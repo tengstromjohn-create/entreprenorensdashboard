@@ -37,9 +37,13 @@ export function useCompanyData(userId: string | undefined) {
     setLoading(true)
     setError(null)
     try {
-      const result = await callEdgeFunction<{ orgNumber: string; data: CompanyData }>('lookup-company', {
+      const result = await callEdgeFunction<{ orgNumber: string; found?: boolean; data?: CompanyData; message?: string }>('lookup-company', {
         orgNumber,
       })
+      if (result.found === false || !result.data) {
+        setError(`Inget bolag hittades för ${orgNumber}.`)
+        return null
+      }
       setCompanyData(result.data)
       return result.data
     } catch (err: unknown) {
