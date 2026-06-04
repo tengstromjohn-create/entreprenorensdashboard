@@ -1,11 +1,12 @@
 import {
   Lock, ArrowRight, ExternalLink,
   Rocket, HeartPulse, CheckSquare, ClipboardList, Sparkles, Wrench,
+  type LucideIcon,
 } from 'lucide-react'
 import type { ToolDefinition, TrustLevel } from '@/types/dashboard'
 import { hasTrustLevel } from '@/types/dashboard'
 
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const ICON_MAP: Record<string, LucideIcon> = {
   Rocket, HeartPulse, CheckSquare, ClipboardList, Sparkles, Wrench,
 }
 
