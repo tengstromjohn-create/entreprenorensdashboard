@@ -29,14 +29,32 @@ export interface CompanyData {
   sede?: string
   address?: string
   boardMembers?: BoardMember[]
+  boardSource?: 'roaring_board' | 'derived_from_signatory' // Varifrån styrelsen kommer (board-endpoint vs härledd ur firmatecknare)
+  signatory?: Signatory       // NY: firmateckning från Roaring
   status?: string
   companyType?: string
+  numberOfEmployeesInterval?: string // Roaring ger intervall ("1-4 anställda"), inte exakt antal
+  shareCapital?: number        // NY: för bolagsanalys
 }
 
 export interface BoardMember {
   name: string
   role: string
   personalNumberHash?: string
+}
+
+export interface SignatoryPerson {
+  name: string
+  personalNumber?: string
+  roles: string[]              // T.ex. ["Ledamot", "Suppleant"] eller ["Extern firmatecknare"]
+}
+
+export interface Signatory {
+  description: string          // Råtext från Roaring (OBS: utan mellanslag), "Firmantecknastvåiförening..." osv.
+  rule: 'individually' | 'jointly_two' | 'jointly_three' | 'jointly_all' | 'other' // Klassificering för avtalsmotorn
+  authorizedPersons?: string[] // Unika namn på personer med firmateckning (kan vara delmängd av styrelsen)
+  combinations?: SignatoryPerson[][] // Varje grupp = personer som TILLSAMMANS får teckna firman
+  raw?: unknown                // Spara rå-Roaring-svar för debug
 }
 
 export interface HealthCheckResult {
