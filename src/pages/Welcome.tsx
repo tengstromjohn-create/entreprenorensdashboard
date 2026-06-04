@@ -70,7 +70,7 @@ export function Welcome() {
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-[#1F2A30]">
+          <h1 className="text-3xl font-bold tracking-tight text-[#0E3047]">
             Grundat
           </h1>
           <p className="text-xs text-gray-400 -mt-1">av John Tengström</p>
