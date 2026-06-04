@@ -177,6 +177,8 @@ serve(async (req) => {
     const record = overviewBody?.records?.[0]
 
     if (!record || overviewBody?.status?.code !== 0) {
+      // OBS: HTTP 200 (inte 404) — supabase.functions.invoke i frontend behandlar alla
+      // icke-2xx-svar som fel och kastar bort bodyn. Signalera "ej hittad" via found:false.
       return new Response(
         JSON.stringify({
           orgNumber: cleaned,
@@ -184,7 +186,7 @@ serve(async (req) => {
           found: false,
           message: overviewBody?.status?.text || 'records not found',
         }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
