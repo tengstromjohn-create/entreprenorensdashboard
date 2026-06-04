@@ -77,7 +77,7 @@ export function ToolsZone() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-[#1F2A30]">Verktyg</h1>
+        <h1 className="text-xl font-bold text-[#0E3047]">Verktyg</h1>
         <p className="text-sm text-gray-500 mt-1">
           Verktyg för att starta, driva och utveckla ditt bolag
         </p>
@@ -98,7 +98,7 @@ export function ToolsZone() {
       </div>
 
       <div className="bg-[#F5F5F0] rounded-lg p-6">
-        <h3 className="font-semibold text-[#1F2A30] mb-2">Vill du vara först med Legal Source Genie?</h3>
+        <h3 className="font-semibold text-[#0E3047] mb-2">Vill du vara först med Legal Source Genie?</h3>
         <p className="text-sm text-gray-600 mb-4">
           AI-driven juridisk research, anpassad för svenska rättskällor.
           Lämna din e-post så meddelar vi dig vid lansering.
@@ -117,11 +117,11 @@ export function ToolsZone() {
             name="email"
             placeholder="din@email.se"
             required
-            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#1F2A30]/20"
+            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E3047]/20"
           />
           <button
             type="submit"
-            className="bg-[#1F2A30] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#2F3A40] transition-colors"
+            className="bg-[#0E3047] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#1A4060] transition-colors"
           >
             Bevaka
           </button>

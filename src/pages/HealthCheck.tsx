@@ -140,7 +140,7 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
         <div key={i} className="flex-1 flex items-center gap-2">
           <div
             className={`h-2 flex-1 rounded-full transition-colors duration-300 ${
-              i < step ? 'bg-[#1F2A30]' : i === step ? 'bg-[#1F2A30]/60' : 'bg-gray-200'
+              i < step ? 'bg-[#0E3047]' : i === step ? 'bg-[#0E3047]/60' : 'bg-gray-200'
             }`}
           />
         </div>
@@ -167,11 +167,11 @@ function SelectField({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-[#1F2A30] mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-[#0E3047] mb-1.5">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-[#1F2A30] focus:outline-none focus:ring-2 focus:ring-[#1F2A30]/20 focus:border-[#1F2A30]"
+        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-[#0E3047] focus:outline-none focus:ring-2 focus:ring-[#0E3047]/20 focus:border-[#0E3047]"
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (
@@ -199,13 +199,13 @@ function TextAreaField({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-[#1F2A30] mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-[#0E3047] mb-1.5">{label}</label>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-[#1F2A30] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1F2A30]/20 focus:border-[#1F2A30] resize-none"
+        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-[#0E3047] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0E3047]/20 focus:border-[#0E3047] resize-none"
       />
     </div>
   )
@@ -226,14 +226,14 @@ function InputField({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-[#1F2A30] mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-[#0E3047] mb-1.5">{label}</label>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-[#1F2A30] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1F2A30]/20 focus:border-[#1F2A30] disabled:bg-gray-50 disabled:text-gray-500"
+        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-[#0E3047] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0E3047]/20 focus:border-[#0E3047] disabled:bg-gray-50 disabled:text-gray-500"
       />
     </div>
   )
@@ -265,7 +265,7 @@ function ScoreCircle({ score, color, size = 'lg' }: { score: number; color: stri
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className={`font-bold text-[#1F2A30] ${size === 'lg' ? 'text-3xl' : 'text-base'}`}>{score}</span>
+        <span className={`font-bold text-[#0E3047] ${size === 'lg' ? 'text-3xl' : 'text-base'}`}>{score}</span>
       </div>
     </div>
   )
@@ -294,7 +294,7 @@ function AreaCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <StatusIcon size={16} style={{ color }} />
-            <h3 className="font-semibold text-[#1F2A30]">{area.name}</h3>
+            <h3 className="font-semibold text-[#0E3047]">{area.name}</h3>
           </div>
           <p className="text-sm text-gray-500 mt-0.5 truncate">
             {area.key_findings[0]}
@@ -335,7 +335,7 @@ function AreaCard({
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pri.color}`}>
                           {pri.label}
                         </span>
-                        <span className="text-sm font-medium text-[#1F2A30]">{rec.title}</span>
+                        <span className="text-sm font-medium text-[#0E3047]">{rec.title}</span>
                       </div>
                       <p className="text-sm text-gray-600">{rec.description}</p>
                       {rec.consequence_if_skipped && (
@@ -519,7 +519,7 @@ export function HealthCheck() {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-[#1F2A30]">Corporate Health Check</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#0E3047]">Corporate Health Check</h1>
           <p className="text-gray-500 mt-1">
             Analysera ditt bolags juridiska och regulatoriska status.
           </p>
@@ -532,9 +532,9 @@ export function HealthCheck() {
           <div className="flex items-center gap-3 mb-6">
             {(() => {
               const Icon = STEPS[step].icon
-              return <Icon size={20} className="text-[#1F2A30]" />
+              return <Icon size={20} className="text-[#0E3047]" />
             })()}
-            <h2 className="text-lg font-semibold text-[#1F2A30]">{STEPS[step].label}</h2>
+            <h2 className="text-lg font-semibold text-[#0E3047]">{STEPS[step].label}</h2>
           </div>
 
           {/* Step content */}
@@ -708,7 +708,7 @@ export function HealthCheck() {
             {step > 0 ? (
               <button
                 onClick={() => setStep(step - 1)}
-                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#1F2A30] transition-colors"
+                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#0E3047] transition-colors"
               >
                 <ArrowLeft size={16} />
                 Tillbaka
@@ -716,7 +716,7 @@ export function HealthCheck() {
             ) : (
               <button
                 onClick={() => navigate('/dashboard/verktyg')}
-                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#1F2A30] transition-colors"
+                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#0E3047] transition-colors"
               >
                 <ArrowLeft size={16} />
                 Verktyg
@@ -727,7 +727,7 @@ export function HealthCheck() {
               <button
                 onClick={() => setStep(step + 1)}
                 disabled={!canAdvance()}
-                className="flex items-center gap-2 bg-[#1F2A30] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#2F3A40] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 bg-[#0E3047] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#1A4060] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Nästa
                 <ArrowRight size={16} />
@@ -736,7 +736,7 @@ export function HealthCheck() {
               <button
                 onClick={handleSubmit}
                 disabled={!canAdvance()}
-                className="flex items-center gap-2 bg-[#1F2A30] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#2F3A40] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 bg-[#0E3047] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#1A4060] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Sparkles size={16} />
                 Kör analys
@@ -757,11 +757,11 @@ export function HealthCheck() {
       <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[400px] gap-6">
         <div className="relative">
           <div className="w-20 h-20 rounded-full bg-[#F5F5F0] flex items-center justify-center">
-            <Loader2 size={32} className="text-[#1F2A30] animate-spin" />
+            <Loader2 size={32} className="text-[#0E3047] animate-spin" />
           </div>
         </div>
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-[#1F2A30] mb-2">Analyserar ditt bolag...</h2>
+          <h2 className="text-xl font-semibold text-[#0E3047] mb-2">Analyserar ditt bolag...</h2>
           <p className="text-sm text-gray-500">
             Vi granskar bolagsdata och dina svar med AI-driven juridisk expertis.
           </p>
@@ -782,12 +782,12 @@ export function HealthCheck() {
           <XCircle size={32} className="text-red-500" />
         </div>
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-[#1F2A30] mb-2">Något gick fel</h2>
+          <h2 className="text-xl font-semibold text-[#0E3047] mb-2">Något gick fel</h2>
           <p className="text-sm text-gray-500 max-w-md">{errorMessage}</p>
         </div>
         <button
           onClick={handleRunAgain}
-          className="flex items-center gap-2 bg-[#1F2A30] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#2F3A40] transition-colors"
+          className="flex items-center gap-2 bg-[#0E3047] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#1A4060] transition-colors"
         >
           <RotateCcw size={16} />
           Försök igen
@@ -808,7 +808,7 @@ export function HealthCheck() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1F2A30]">Analysresultat</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-[#0E3047]">Analysresultat</h1>
             <p className="text-gray-500 mt-0.5">
               {result.company_name} &middot; {result.org_number} &middot;{' '}
               {new Date(result.analysis_date).toLocaleDateString('sv-SE')}
@@ -816,7 +816,7 @@ export function HealthCheck() {
           </div>
           <button
             onClick={handleRunAgain}
-            className="flex items-center gap-2 bg-[#F5F5F0] text-[#1F2A30] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#E8E4DE] transition-colors"
+            className="flex items-center gap-2 bg-[#F5F5F0] text-[#0E3047] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#E8E4DE] transition-colors"
           >
             <RotateCcw size={14} />
             Kör igen
@@ -828,7 +828,7 @@ export function HealthCheck() {
           <div className="flex items-center gap-8">
             <ScoreCircle score={result.total_score} color={scoreColor} size="lg" />
             <div className="flex-1">
-              <h2 className="text-lg font-semibold text-[#1F2A30] mb-3">Totalpoäng</h2>
+              <h2 className="text-lg font-semibold text-[#0E3047] mb-3">Totalpoäng</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {result.areas.map((area) => (
                   <div key={area.name} className="flex items-center gap-2">
@@ -837,7 +837,7 @@ export function HealthCheck() {
                       style={{ backgroundColor: SCORE_COLORS[area.color] }}
                     />
                     <span className="text-sm text-gray-600 truncate">{area.name}</span>
-                    <span className="text-sm font-medium text-[#1F2A30] ml-auto">{area.score}</span>
+                    <span className="text-sm font-medium text-[#0E3047] ml-auto">{area.score}</span>
                   </div>
                 ))}
               </div>
@@ -847,7 +847,7 @@ export function HealthCheck() {
 
         {/* Top 3 actions */}
         {result.top_3_actions && result.top_3_actions.length > 0 && (
-          <div className="bg-[#1F2A30] rounded-xl p-6 text-white">
+          <div className="bg-[#0E3047] rounded-xl p-6 text-white">
             <h3 className="font-semibold mb-3 flex items-center gap-2">
               <Sparkles size={16} />
               Top 3 åtgärder
@@ -884,11 +884,11 @@ export function HealthCheck() {
         {!isBankId && result.upgrade_cta && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 text-center">
             <ShieldCheck size={32} className="text-green-600 mx-auto mb-3" />
-            <h3 className="font-semibold text-[#1F2A30] mb-2">Få fullständig analys</h3>
+            <h3 className="font-semibold text-[#0E3047] mb-2">Få fullständig analys</h3>
             <p className="text-sm text-gray-500 mb-4 max-w-md mx-auto">{result.upgrade_cta}</p>
             <button
               onClick={() => setShowUpgrade(true)}
-              className="bg-[#1F2A30] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#2F3A40] transition-colors inline-flex items-center gap-2"
+              className="bg-[#0E3047] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#1A4060] transition-colors inline-flex items-center gap-2"
             >
               Verifiera med BankID
               <ArrowRight size={16} />

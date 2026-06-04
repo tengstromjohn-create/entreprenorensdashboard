@@ -23,7 +23,7 @@ export function UpgradeModal({ isOpen, onClose, onBankId }: Props) {
             <ShieldCheck className="text-green-600" size={32} />
           </div>
 
-          <h2 className="text-xl font-bold text-[#1F2A30]">Lås upp full tillgång</h2>
+          <h2 className="text-xl font-bold text-[#0E3047]">Lås upp full tillgång</h2>
 
           <p className="text-gray-600 text-sm">
             Med BankID-verifiering får du tillgång till AI-driven analys,
@@ -31,7 +31,7 @@ export function UpgradeModal({ isOpen, onClose, onBankId }: Props) {
           </p>
 
           <div className="w-full bg-[#F5F5F0] rounded-lg p-4 text-left">
-            <p className="text-sm font-medium text-[#1F2A30] mb-2">Med BankID får du:</p>
+            <p className="text-sm font-medium text-[#0E3047] mb-2">Med BankID får du:</p>
             <ul className="space-y-2 text-sm text-gray-600">
               <li className="flex items-start gap-2">
                 <span className="text-green-500 mt-0.5">&#10003;</span>
@@ -54,7 +54,7 @@ export function UpgradeModal({ isOpen, onClose, onBankId }: Props) {
 
           <button
             onClick={onBankId}
-            className="w-full bg-[#1F2A30] text-white py-3 rounded-lg font-medium hover:bg-[#2F3A40] transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-[#0E3047] text-white py-3 rounded-lg font-medium hover:bg-[#1A4060] transition-colors flex items-center justify-center gap-2"
           >
             Verifiera med BankID
             <ArrowRight size={16} />

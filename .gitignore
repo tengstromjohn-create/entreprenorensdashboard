@@ -34,3 +34,6 @@ supabase/.temp/
 
 # Lokala utvecklarmaterial (promptar, sessions, råmaterial — bor utanför repo)
 Underlag/
+
+# Johns avtalsmallar (från VQ Legal m.fl. — IP, ska inte committas)
+Mallar/

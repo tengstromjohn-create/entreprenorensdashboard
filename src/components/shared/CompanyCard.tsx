@@ -14,17 +14,17 @@ export function CompanyCard({ company, lastUpdated, onRefresh, refreshing }: Pro
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="bg-[#F5F5F0] rounded-lg p-2.5">
-            <Building2 size={22} className="text-[#1F2A30]" />
+            <Building2 size={22} className="text-[#0E3047]" />
           </div>
           <div>
-            <h2 className="font-bold text-lg text-[#1F2A30]">{company.name}</h2>
+            <h2 className="font-bold text-lg text-[#0E3047]">{company.name}</h2>
             <p className="text-sm text-gray-500">Org.nr: {company.orgNumber}</p>
           </div>
         </div>
         <button
           onClick={onRefresh}
           disabled={refreshing}
-          className="text-sm text-gray-500 hover:text-[#1F2A30] flex items-center gap-1 transition-colors"
+          className="text-sm text-gray-500 hover:text-[#0E3047] flex items-center gap-1 transition-colors"
         >
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
           Uppdatera

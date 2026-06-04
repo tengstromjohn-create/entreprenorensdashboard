@@ -20,7 +20,7 @@ function RootRedirect() {
     return (
       <div className="flex h-screen items-center justify-center bg-[#FAFAF8]">
         <div className="text-center">
-          <h1 className="text-lg font-bold text-[#1F2A30]">Grundat</h1>
+          <h1 className="text-lg font-bold text-[#0E3047]">Grundat</h1>
           <p className="text-sm text-gray-400 mt-1">Laddar...</p>
         </div>
       </div>
@@ -56,7 +56,7 @@ function App() {
           <Route path="verktyg/health-check" element={<HealthCheck />} />
           <Route path="verktyg/readiness-check" element={
             <div className="space-y-4">
-              <h1 className="text-xl font-bold text-[#1F2A30]">Readiness Check</h1>
+              <h1 className="text-xl font-bold text-[#0E3047]">Readiness Check</h1>
               <div className="bg-[#F5F5F0] rounded-lg p-8 text-center">
                 <p className="text-gray-500">Readiness Check — kommer snart</p>
               </div>
@@ -64,7 +64,7 @@ function App() {
           } />
           <Route path="verktyg/checklistor" element={
             <div className="space-y-4">
-              <h1 className="text-xl font-bold text-[#1F2A30]">Checklistor & Mallar</h1>
+              <h1 className="text-xl font-bold text-[#0E3047]">Checklistor & Mallar</h1>
               <div className="bg-[#F5F5F0] rounded-lg p-8 text-center">
                 <p className="text-gray-500">Checklistor — kommer snart</p>
               </div>

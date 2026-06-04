@@ -47,38 +47,48 @@
 }
 
 :root {
+    /* Maritim palett — Grundat v2026-05-17 */
+    --grundat-navy: #0E3047;       /* Sjödjup, primärfärg */
+    --grundat-navy-hover: #1A4060; /* Hover-navy */
+    --grundat-brick: #B5453B;      /* Tegelröd accent (signal, premium-CTA) */
+    --grundat-brick-hover: #9F3A30;/* Hover-tegel */
+    --grundat-brass: #C18B2A;      /* Mässing (varning, "kommer snart") */
+    --grundat-linen: #FAF6EE;      /* Segelduk-vit (varm base) */
+    --grundat-cream: #E8DCC0;      /* Cream-skugga */
+    --grundat-forest: #3A5A40;     /* Skogsgrön (status: godkänd) */
+
     --radius: 0.5rem;
     --background: #ffffff;
-    --foreground: #1F2A30;
+    --foreground: #0E3047;
     --card: #ffffff;
-    --card-foreground: #1F2A30;
+    --card-foreground: #0E3047;
     --popover: #ffffff;
-    --popover-foreground: #1F2A30;
-    --primary: #1F2A30;
+    --popover-foreground: #0E3047;
+    --primary: #0E3047;
     --primary-foreground: #ffffff;
     --secondary: #F5F5F0;
-    --secondary-foreground: #1F2A30;
+    --secondary-foreground: #0E3047;
     --muted: #F5F5F0;
-    --muted-foreground: #636e72;
-    --accent: #F5F5F0;
-    --accent-foreground: #1F2A30;
-    --destructive: #e74c3c;
+    --muted-foreground: #4B6680;   /* Dim navy istället för neutralt grått */
+    --accent: #B5453B;             /* Tegelröd accent */
+    --accent-foreground: #FAF6EE;
+    --destructive: #B5453B;        /* Tegel även för destructive — konsekvent */
     --border: #E8E4DE;
     --input: #E8E4DE;
-    --ring: #1F2A30;
-    --chart-1: #1F2A30;
-    --chart-2: #636e72;
-    --chart-3: #b2bec3;
-    --chart-4: #dfe6e9;
-    --chart-5: #E8E4DE;
-    --sidebar: #F5F5F0;
-    --sidebar-foreground: #1F2A30;
-    --sidebar-primary: #1F2A30;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #E8E4DE;
-    --sidebar-accent-foreground: #1F2A30;
-    --sidebar-border: #E8E4DE;
-    --sidebar-ring: #1F2A30;
+    --ring: #0E3047;
+    --chart-1: #0E3047;
+    --chart-2: #B5453B;
+    --chart-3: #C18B2A;
+    --chart-4: #3A5A40;
+    --chart-5: #E8DCC0;
+    --sidebar: #1F4567;            /* Harbour navy — ljusare sidebar */
+    --sidebar-foreground: #FAF6EE;
+    --sidebar-primary: #B5453B;    /* Tegelröd active state */
+    --sidebar-primary-foreground: #FAF6EE;
+    --sidebar-accent: #2A5D8C;
+    --sidebar-accent-foreground: #FAF6EE;
+    --sidebar-border: #2A5D8C;
+    --sidebar-ring: #B5453B;
 }
 
 .dark {
@@ -89,7 +99,7 @@
     --popover: #242424;
     --popover-foreground: #f5f5f0;
     --primary: #f5f5f0;
-    --primary-foreground: #1F2A30;
+    --primary-foreground: #0E3047;
     --secondary: #2a2a2a;
     --secondary-foreground: #f5f5f0;
     --muted: #2a2a2a;
@@ -108,7 +118,7 @@
     --sidebar: #1a1a1a;
     --sidebar-foreground: #f5f5f0;
     --sidebar-primary: #f5f5f0;
-    --sidebar-primary-foreground: #1F2A30;
+    --sidebar-primary-foreground: #0E3047;
     --sidebar-accent: #2a2a2a;
     --sidebar-accent-foreground: #f5f5f0;
     --sidebar-border: #333333;
