@@ -4,11 +4,14 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from 'react'
 import { useAuth as useOidcAuth } from 'react-oidc-context'
 import { supabase } from '@/lib/supabase'
+import { callEdgeFunction } from '@/lib/edge-functions'
 import type { User } from '@supabase/supabase-js'
+import type { EngagementData } from '@/types/dashboard'
 
 export type TrustLevel = 'org_nr' | 'pending_manual' | 'verified_manual' | 'bankid' | 'existing_client'
 
@@ -19,6 +22,7 @@ export interface UserProfile {
   trust_level: TrustLevel
   org_number?: string
   personal_number_hash?: string
+  engagements?: EngagementData
   bankid_verified_at?: string
   conflict_check_result?: 'clear' | 'flagged'
   conflict_checked_at?: string
@@ -38,6 +42,7 @@ interface AuthContextType {
   signInWithBankID: () => Promise<void>
   signInWithMagicLink: (email: string) => Promise<void>
   refreshProfile: () => Promise<void>
+  completeBankIDLogin: (claims: { name: string; personalNumber: string; sub?: string }) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -48,6 +53,11 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [trustLevel, setTrustLevel] = useState<TrustLevel>('org_nr')
   const [isLoading, setIsLoading] = useState(true)
+  // Guard så BankID-hydreringen i OIDC-effekten bara körs en gång per provider-mount
+  const hydrationRef = useRef(false)
+  // Dedupe: AuthCallback och OIDC-effekten kan anropa completeBankIDLogin samtidigt —
+  // dela samma körning så bankid-auth (createUser m.m.) inte race:ar.
+  const loginInFlight = useRef<Promise<void> | null>(null)
 
   // Debug: log OIDC state changes
   useEffect(() => {
@@ -108,15 +118,87 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [oidcAuth.isAuthenticated, fetchProfile])
 
+  /**
+   * Slutför BankID-inloggningen efter lyckad Signicat-callback.
+   *  1. bankid-auth: skapar/matchar Supabase-användare, hashar pnr (SHA-256),
+   *     sätter trust_level='bankid', kör jävskontroll och persisterar engagemang.
+   *     Gateas via sessionStorage så det tunga arbetet körs en gång per browser-session,
+   *     inte vid varje refresh.
+   *  2. get-my-companies: hämtar bolagsengagemangen för "Dina bolag". RLS tillåter inte
+   *     anon att läsa user_profiles utan Supabase-session (policy: auth.uid()=id), så
+   *     listan hämtas via denna stateless endpoint istället för en DB-läsning.
+   * Felar aldrig hela inloggningen på engagemangs-problem — listan blir då tom.
+   */
+  const completeBankIDLogin = useCallback((claims: { name: string; personalNumber: string; sub?: string }): Promise<void> => {
+    if (loginInFlight.current) return loginInFlight.current
+
+    const run = (async () => {
+      const { name, personalNumber } = claims
+      const flagKey = `bankid_auth_done_${claims.sub ?? personalNumber}`
+      let userId: string | undefined
+      let conflictResult: 'clear' | 'flagged' | undefined
+
+      if (!sessionStorage.getItem(flagKey)) {
+        const res = await callEdgeFunction<{ userId: string; conflictResult: 'clear' | 'flagged' }>(
+          'bankid-auth',
+          { name, personalNumber }
+        )
+        userId = res.userId
+        conflictResult = res.conflictResult
+        sessionStorage.setItem(flagKey, '1')
+      }
+
+      let engagements: EngagementData | undefined
+      try {
+        const eng = await callEdgeFunction<{ data: EngagementData }>('get-my-companies', { personalNumber })
+        engagements = eng.data
+      } catch (err) {
+        console.error('[AuthContext] get-my-companies misslyckades:', err instanceof Error ? err.message : String(err))
+      }
+
+      setProfile((prev) => ({
+        id: userId ?? prev?.id ?? '',
+        display_name: name || prev?.display_name || '',
+        email: prev?.email ?? '',
+        trust_level: 'bankid',
+        engagements: engagements ?? prev?.engagements,
+        ...(conflictResult && { conflict_check_result: conflictResult }),
+        personal_number_hash: prev?.personal_number_hash,
+        created_at: prev?.created_at ?? '',
+        updated_at: new Date().toISOString(),
+      }))
+      setTrustLevel('bankid')
+    })()
+
+    loginInFlight.current = run.finally(() => { loginInFlight.current = null })
+    return loginInFlight.current
+  }, [])
+
   // Handle OIDC auth (BankID) — sync OIDC user to local state
   useEffect(() => {
     if (oidcAuth.isAuthenticated && oidcAuth.user) {
-      // BankID users get trust_level='bankid' via the bankid-auth edge function
-      // For now, set a temporary user object until the edge function creates the Supabase user
       setTrustLevel('bankid')
       setIsLoading(false)
+
+      // Refresh-robusthet: AuthCallback driver inloggningsflödet, men vid en hård omladdning
+      // av t.ex. /dashboard körs inte callbacken — hydrera då engagemangen här så att
+      // "Dina bolag" inte töms. Körs en gång per mount; bankid-auth gateas internt.
+      if (!hydrationRef.current) {
+        hydrationRef.current = true
+        const p = oidcAuth.user.profile
+        const personalNumber = typeof p.personalNumber === 'string' ? p.personalNumber : ''
+        if (personalNumber) {
+          completeBankIDLogin({
+            name: typeof p.name === 'string' ? p.name : '',
+            personalNumber,
+            sub: p.sub,
+          }).catch((err) =>
+            console.error('[AuthContext] BankID-hydrering misslyckades:', err instanceof Error ? err.message : String(err))
+          )
+        }
+      }
     }
-  }, [oidcAuth.isAuthenticated, oidcAuth.user])
+  }, [oidcAuth.isAuthenticated, oidcAuth.user, completeBankIDLogin])
 
   const isAuthenticated = !!(user || oidcAuth.isAuthenticated)
 
@@ -191,6 +273,7 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
         signInWithBankID,
         signInWithMagicLink,
         refreshProfile,
+        completeBankIDLogin,
       }}
     >
       {children}
