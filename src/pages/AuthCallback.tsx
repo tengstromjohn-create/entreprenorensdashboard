@@ -1,39 +1,44 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth as useOidcAuth } from 'react-oidc-context';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function AuthCallback() {
   const oidcAuth = useOidcAuth();
+  const { completeBankIDLogin } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  // PKCE-callbacken kan rendera om flera gånger — kör hanteringen exakt en gång
+  const handledRef = useRef(false);
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // The OIDC library handles the callback automatically via signinCallback
-        // After processing, the user will be available in the auth context
+        // oidc-client-ts hanterar code/PKCE-utbytet automatiskt; här tar vi vid
+        // när användaren är autentiserad.
 
         if (oidcAuth.error) {
           setError(oidcAuth.error.message);
           return;
         }
 
-        if (oidcAuth.isAuthenticated && oidcAuth.user) {
-          // TODO: ED-2 — Call edge function "bankid-auth" which:
-          //   a) Hashes personalNumber (SHA-256)
-          //   b) Creates/matches Supabase user
-          //   c) Sets trust_level='bankid'
-          //   d) Runs conflict of interest check (jävskontroll)
-          //   e) Returns session token
-          //
-          // const { personalNumber, name } = oidcAuth.user.profile;
-          // const response = await fetch('/api/bankid-auth', {
-          //   method: 'POST',
-          //   headers: { 'Content-Type': 'application/json' },
-          //   body: JSON.stringify({ personalNumber, name }),
-          // });
-          // const { sessionToken } = await response.json();
-          // await supabase.auth.setSession(sessionToken);
+        if (oidcAuth.isAuthenticated && oidcAuth.user && !handledRef.current) {
+          handledRef.current = true;
+
+          // Claims från id_token (PKCE/public client — inget client_secret i frontend).
+          const profile = oidcAuth.user.profile;
+          const name = typeof profile.name === 'string' ? profile.name : '';
+          const personalNumber =
+            typeof profile.personalNumber === 'string' ? profile.personalNumber : '';
+
+          if (!personalNumber) {
+            setError('BankID-svaret saknade personnummer. Kontrollera Signicat-claims.');
+            return;
+          }
+
+          // bankid-auth (skapa/matcha användare, hash, jävskontroll, persistera engagemang)
+          // + ladda profilen så att profile.engagements fylls inför "Dina bolag".
+          await completeBankIDLogin({ name, personalNumber, sub: profile.sub });
 
           navigate('/dashboard', { replace: true });
         }
@@ -48,7 +53,7 @@ export function AuthCallback() {
     if (!oidcAuth.isLoading) {
       handleCallback();
     }
-  }, [oidcAuth.isLoading, oidcAuth.isAuthenticated, oidcAuth.user, oidcAuth.error, navigate]);
+  }, [oidcAuth.isLoading, oidcAuth.isAuthenticated, oidcAuth.user, oidcAuth.error, navigate, completeBankIDLogin]);
 
   if (error) {
     return (

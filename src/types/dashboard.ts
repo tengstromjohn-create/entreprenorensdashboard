@@ -57,6 +57,20 @@ export interface Signatory {
   raw?: unknown                // Spara rå-Roaring-svar för debug
 }
 
+// Bolagsengagemang — bolag personen företräder (Spurt A2, Roaring Company Engagements 3.0)
+export interface Engagement {
+  orgNumber: string
+  companyName: string
+  roles: string[]
+}
+
+export interface EngagementData {
+  fetchedAt: string
+  source: 'roaring'
+  fullName?: string
+  items: Engagement[]
+}
+
 export interface HealthCheckResult {
   id: string
   created_at: string

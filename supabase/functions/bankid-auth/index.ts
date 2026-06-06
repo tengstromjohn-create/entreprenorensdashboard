@@ -1,6 +1,25 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders, handleCors } from '../_shared/cors.ts'
 import { getAdminClient } from '../_shared/supabase-admin.ts'
+import { getRoaringCredentials, getRoaringToken, fetchEngagements, type EngagementData } from '../_shared/roaring.ts'
+
+/**
+ * Hämtar personens bolagsengagemang från Roaring (Spurt A2).
+ * Felar aldrig hela inloggningen — returnerar null vid problem så att
+ * BankID-flödet alltid går igenom. "Dina bolag"-vyn kan hämta på nytt vid behov.
+ */
+async function fetchEngagementsSafe(personalNumber: string): Promise<EngagementData | null> {
+  try {
+    const creds = getRoaringCredentials()
+    if (!creds) return null
+    const token = await getRoaringToken(creds.clientId, creds.clientSecret)
+    const result = await fetchEngagements(token, personalNumber)
+    return result.ok ? (result.data ?? null) : null
+  } catch (err) {
+    console.error('[bankid-auth] engagement-hämtning misslyckades:', err instanceof Error ? err.message : String(err))
+    return null
+  }
+}
 
 serve(async (req) => {
   const corsResponse = handleCors(req)
@@ -25,6 +44,10 @@ serve(async (req) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer))
     const personalNumberHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 
+    // Hämta bolagsengagemang från Roaring (publik info — orgnr/bolagsnamn/roll).
+    // Personnumret skickas bara server-side hit, lagras aldrig i klartext.
+    const engagements = await fetchEngagementsSafe(personalNumber)
+
     let userId: string
 
     if (existingUserId) {
@@ -37,6 +60,7 @@ serve(async (req) => {
           personal_number_hash: personalNumberHash,
           bankid_verified_at: new Date().toISOString(),
           display_name: name,
+          ...(engagements && { engagements }),
         })
         .eq('id', userId)
 
@@ -57,6 +81,7 @@ serve(async (req) => {
             trust_level: 'bankid',
             bankid_verified_at: new Date().toISOString(),
             display_name: name,
+            ...(engagements && { engagements }),
           })
           .eq('id', userId)
       } else {
@@ -80,6 +105,7 @@ serve(async (req) => {
             trust_level: 'bankid',
             personal_number_hash: personalNumberHash,
             bankid_verified_at: new Date().toISOString(),
+            ...(engagements && { engagements }),
           })
         if (profileError) throw profileError
       }
@@ -104,7 +130,7 @@ serve(async (req) => {
       .eq('id', userId)
 
     return new Response(
-      JSON.stringify({ userId, conflictResult }),
+      JSON.stringify({ userId, conflictResult, engagementCount: engagements?.items.length ?? 0 }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
