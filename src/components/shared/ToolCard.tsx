@@ -1,13 +1,13 @@
 import {
   Lock, ArrowRight, ExternalLink,
-  Rocket, HeartPulse, CheckSquare, ClipboardList, Sparkles, Wrench,
+  Rocket, HeartPulse, CheckSquare, ClipboardList, Sparkles, Wrench, FileSignature,
   type LucideIcon,
 } from 'lucide-react'
 import type { ToolDefinition, TrustLevel } from '@/types/dashboard'
 import { hasTrustLevel } from '@/types/dashboard'
 
 const ICON_MAP: Record<string, LucideIcon> = {
-  Rocket, HeartPulse, CheckSquare, ClipboardList, Sparkles, Wrench,
+  Rocket, HeartPulse, CheckSquare, ClipboardList, Sparkles, Wrench, FileSignature,
 }
 
 interface Props {

@@ -73,7 +73,7 @@ ENBART JSON, ingen annan text.`
 // PIPELINE-FUNKTION
 // ============================================================
 interface PipelineInput {
-  sourceType: 'health_check' | 'startup_kit'
+  sourceType: 'health_check' | 'startup_kit' | 'contract'
   sourceId?: string
   userId?: string
   geminiOutput: Record<string, unknown>
@@ -153,7 +153,7 @@ export async function runQAPipeline(input: PipelineInput): Promise<PipelineResul
         system: CLAUDE_QA_SYSTEM_PROMPT,
         messages: [{
           role: 'user',
-          content: `Granska denna ${input.sourceType === 'health_check' ? 'Corporate Health Check' : 'Startup Kit'}-rapport:\n\n${JSON.stringify(input.geminiOutput, null, 2)}`
+          content: `Granska denna ${input.sourceType === 'health_check' ? 'Corporate Health Check-rapport' : input.sourceType === 'contract' ? 'avtalsgenerering (granska content_markdown som juridiskt dokument: korrekta lagrum, inga påhittade uppgifter utanför klamrar, tvingande arbetsrätt respekterad)' : 'Startup Kit-rapport'}:\n\n${JSON.stringify(input.geminiOutput, null, 2)}`
         }],
       }),
     })
@@ -254,6 +254,14 @@ export async function runQAPipeline(input: PipelineInput): Promise<PipelineResul
 // FLAGGAD-RAPPORT: Vad användaren ser vid flaggning
 // ============================================================
 export function getFlaggedUserResponse(sourceType: string) {
+  if (sourceType === 'contract') {
+    return {
+      status: 'review_pending',
+      message: 'Ditt avtal genomgår kvalitetskontroll innan det levereras. Du får det inom kort.',
+      estimated_time: '1-2 timmar under kontorstid',
+      contact: 'Vid frågor, boka ett samtal på johntengstrom.se/boka',
+    }
+  }
   if (sourceType === 'health_check') {
     return {
       status: 'review_pending',
