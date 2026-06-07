@@ -10,6 +10,7 @@ import {
 import { useAuth as useOidcAuth } from 'react-oidc-context'
 import { supabase } from '@/lib/supabase'
 import { callEdgeFunction } from '@/lib/edge-functions'
+import { extractBankIDClaims } from '@/lib/bankid-claims'
 import type { User } from '@supabase/supabase-js'
 import type { EngagementData } from '@/types/dashboard'
 
@@ -186,13 +187,9 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
       if (!hydrationRef.current) {
         hydrationRef.current = true
         const p = oidcAuth.user.profile
-        const personalNumber = typeof p.personalNumber === 'string' ? p.personalNumber : ''
+        const { personalNumber, name } = extractBankIDClaims(p)
         if (personalNumber) {
-          completeBankIDLogin({
-            name: typeof p.name === 'string' ? p.name : '',
-            personalNumber,
-            sub: p.sub,
-          }).catch((err) =>
+          completeBankIDLogin({ name, personalNumber, sub: p.sub }).catch((err) =>
             console.error('[AuthContext] BankID-hydrering misslyckades:', err instanceof Error ? err.message : String(err))
           )
         }

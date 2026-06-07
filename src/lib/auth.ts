@@ -19,7 +19,7 @@ export const oidcConfig = {
   redirect_uri: import.meta.env.DEV
     ? 'http://localhost:5173/callback'
     : 'https://grundat.ai/callback',
-  scope: 'openid',
+  scope: 'openid profile nin',
   response_type: 'code' as const,
   // PKCE: automatiskt aktiverat när client_secret saknas och response_type är 'code'.
   // code_challenge_method 'S256' är default i oidc-client-ts v3.
