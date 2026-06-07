@@ -184,7 +184,8 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
       // Refresh-robusthet: AuthCallback driver inloggningsflödet, men vid en hård omladdning
       // av t.ex. /dashboard körs inte callbacken — hydrera då engagemangen här så att
       // "Dina bolag" inte töms. Körs en gång per mount; bankid-auth gateas internt.
-      if (!hydrationRef.current) {
+      // Vänta tills !isLoading så UserInfo (nin/namn) är mergad i profilen — annars race.
+      if (!hydrationRef.current && !oidcAuth.isLoading) {
         hydrationRef.current = true
         const p = oidcAuth.user.profile
         const { personalNumber, name } = extractBankIDClaims(p)
@@ -195,7 +196,7 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, [oidcAuth.isAuthenticated, oidcAuth.user, completeBankIDLogin])
+  }, [oidcAuth.isAuthenticated, oidcAuth.user, oidcAuth.isLoading, completeBankIDLogin])
 
   const isAuthenticated = !!(user || oidcAuth.isAuthenticated)
 

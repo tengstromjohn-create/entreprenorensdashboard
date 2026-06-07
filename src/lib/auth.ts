@@ -23,6 +23,8 @@ export const oidcConfig = {
   response_type: 'code' as const,
   // PKCE: automatiskt aktiverat när client_secret saknas och response_type är 'code'.
   // code_challenge_method 'S256' är default i oidc-client-ts v3.
-  loadUserInfo: false, // Vi använder bara id_token; ingen extra UserInfo-rundtur behövs
+  // Signicat levererar nin/namn via UserInfo-endpointen, INTE i id_token. Med loadUserInfo:true
+  // hämtar oidc-client-ts UserInfo och mergar claims in i user.profile efter callbacken.
+  loadUserInfo: true,
   userStore: new WebStorageStateStore({ store: window.sessionStorage }),
 };
