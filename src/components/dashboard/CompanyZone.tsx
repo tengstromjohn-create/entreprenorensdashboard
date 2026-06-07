@@ -23,7 +23,7 @@ function formatOrgNumber(org: string): string {
 }
 
 export function CompanyZone() {
-  const { user, profile, trustLevel } = useAuth()
+  const { user, profile, trustLevel, activeCompany, setActiveCompany } = useAuth()
   const navigate = useNavigate()
   const { companyData, loading, error, refreshCompanyData, fetchFromProfile } = useCompanyData(user?.id)
   const { latestResult } = useHealthCheck(user?.id)
@@ -41,10 +41,21 @@ export function CompanyZone() {
     if (!hasEngagements) fetchFromProfile()
   }, [fetchFromProfile, hasEngagements])
 
+  // Återställ senast valda bolag (aktivt bolag delas med Health Check/Avtalsmotorn
+  // via AuthContext + sessionStorage — BankID-användare kan inte läsa det från DB:n)
+  useEffect(() => {
+    if (activeCompany && !companyData && !selectedOrg && !searchTouched) {
+      setSelectedOrg(activeCompany.orgNumber)
+      handleSelectCompany(activeCompany.orgNumber)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const handleSelectCompany = async (org: string) => {
     setSelectedOrg(org)
     setSearchTouched(true)
-    await refreshCompanyData(org)
+    const data = await refreshCompanyData(org)
+    if (data) setActiveCompany(data)
   }
 
   const handleSearch = async (e: FormEvent) => {
@@ -52,7 +63,8 @@ export function CompanyZone() {
     if (!orgInput.trim()) return
     setSelectedOrg(orgInput.trim())
     setSearchTouched(true)
-    await refreshCompanyData(orgInput.trim())
+    const data = await refreshCompanyData(orgInput.trim())
+    if (data) setActiveCompany(data)
   }
 
   return (

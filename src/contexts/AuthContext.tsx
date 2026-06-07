@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { callEdgeFunction } from '@/lib/edge-functions'
 import { extractBankIDClaims } from '@/lib/bankid-claims'
 import type { User } from '@supabase/supabase-js'
-import type { EngagementData } from '@/types/dashboard'
+import type { CompanyData, EngagementData } from '@/types/dashboard'
 
 export type TrustLevel = 'org_nr' | 'pending_manual' | 'verified_manual' | 'bankid' | 'existing_client'
 
@@ -44,6 +44,14 @@ interface AuthContextType {
   signInWithMagicLink: (email: string) => Promise<void>
   refreshProfile: () => Promise<void>
   completeBankIDLogin: (claims: { name: string; personalNumber: string; sub?: string }) => Promise<void>
+  /**
+   * Aktivt bolag — det bolag användaren senast valt i "Dina bolag" (eller slagit upp).
+   * BankID-användare saknar Supabase-session, så bolaget kan inte läsas från
+   * user_profiles (RLS auth.uid()=id). Detta delade state är vad Health Check,
+   * Avtalsmotorn m.fl. ska utgå från. Persisteras i sessionStorage (publik bolagsdata).
+   */
+  activeCompany: CompanyData | null
+  setActiveCompany: (company: CompanyData | null) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -54,6 +62,28 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [trustLevel, setTrustLevel] = useState<TrustLevel>('org_nr')
   const [isLoading, setIsLoading] = useState(true)
+  // Aktivt bolag — hydreras från sessionStorage så det överlever sidladdning
+  const [activeCompany, setActiveCompanyState] = useState<CompanyData | null>(() => {
+    try {
+      const stored = sessionStorage.getItem('grundat_active_company')
+      return stored ? (JSON.parse(stored) as CompanyData) : null
+    } catch {
+      return null
+    }
+  })
+
+  const setActiveCompany = useCallback((company: CompanyData | null) => {
+    setActiveCompanyState(company)
+    try {
+      if (company) {
+        sessionStorage.setItem('grundat_active_company', JSON.stringify(company))
+      } else {
+        sessionStorage.removeItem('grundat_active_company')
+      }
+    } catch {
+      // sessionStorage kan vara otillgänglig (privat läge) — state räcker då
+    }
+  }, [])
   // Guard så BankID-hydreringen i OIDC-effekten bara körs en gång per provider-mount
   const hydrationRef = useRef(false)
   // Dedupe: AuthCallback och OIDC-effekten kan anropa completeBankIDLogin samtidigt —
@@ -260,7 +290,8 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
     setUser(null)
     setProfile(null)
     setTrustLevel('org_nr')
-  }, [oidcAuth])
+    setActiveCompany(null)
+  }, [oidcAuth, setActiveCompany])
 
   const refreshProfile = useCallback(async () => {
     if (user) {
@@ -283,6 +314,8 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
         signInWithMagicLink,
         refreshProfile,
         completeBankIDLogin,
+        activeCompany,
+        setActiveCompany,
       }}
     >
       {children}

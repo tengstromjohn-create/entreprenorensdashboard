@@ -399,8 +399,11 @@ const YES_NO_NA_OPTIONS = [
 
 export function HealthCheck() {
   const navigate = useNavigate()
-  const { user, profile, trustLevel, signInWithBankID } = useAuth()
+  const { user, profile, trustLevel, signInWithBankID, activeCompany } = useAuth()
   const { companyData, fetchFromProfile } = useCompanyData(user?.id)
+  // BankID-användare saknar Supabase-session — bolaget kan inte läsas från user_profiles.
+  // activeCompany (valt i "Dina bolag") är då källan. DB-läsningen har företräde om den finns.
+  const effectiveCompany = companyData ?? activeCompany ?? null
   const { refresh: refreshHealthCheck } = useHealthCheck(user?.id)
 
   const [view, setView] = useState<ViewState>('form')
@@ -418,14 +421,14 @@ export function HealthCheck() {
   }, [user?.id, fetchFromProfile])
 
   useEffect(() => {
-    if (companyData) {
+    if (effectiveCompany) {
       setForm((prev) => ({
         ...prev,
-        orgNumber: companyData.orgNumber || prev.orgNumber,
-        companyName: companyData.name || prev.companyName,
+        orgNumber: effectiveCompany.orgNumber || prev.orgNumber,
+        companyName: effectiveCompany.name || prev.companyName,
       }))
     }
-  }, [companyData])
+  }, [effectiveCompany])
 
   // Auto-fill from profile org_number
   useEffect(() => {
@@ -483,10 +486,11 @@ export function HealthCheck() {
         'generate-health-check',
         {
           orgNumber: form.orgNumber,
-          companyData: companyData || { name: form.companyName, orgNumber: form.orgNumber },
+          companyData: effectiveCompany || { name: form.companyName, orgNumber: form.orgNumber },
           surveyAnswers,
           trustLevel: isBankId ? 'bankid' : 'org_only',
-          userId: user?.id,
+          // BankID-användare saknar Supabase-session — profile.id (från bankid-auth) är deras userId
+          userId: user?.id || profile?.id || undefined,
         }
       )
 
@@ -546,16 +550,16 @@ export function HealthCheck() {
                   value={form.orgNumber}
                   onChange={(v) => updateField('orgNumber', v)}
                   placeholder="XXXXXX-XXXX"
-                  disabled={!!companyData?.orgNumber}
+                  disabled={!!effectiveCompany?.orgNumber}
                 />
                 <InputField
                   label="Bolagsnamn"
                   value={form.companyName}
                   onChange={(v) => updateField('companyName', v)}
                   placeholder="AB Företaget"
-                  disabled={!!companyData?.name}
+                  disabled={!!effectiveCompany?.name}
                 />
-                {companyData && (
+                {effectiveCompany && (
                   <div className="rounded-lg bg-green-50 border border-green-100 p-3 flex items-center gap-2 text-sm text-green-700">
                     <CheckCircle2 size={16} />
                     Bolagsdata hämtad automatiskt
