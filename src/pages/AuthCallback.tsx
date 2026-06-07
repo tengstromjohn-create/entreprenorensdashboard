@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth as useOidcAuth } from 'react-oidc-context';
 import { useAuth } from '@/contexts/AuthContext';
+import { extractBankIDClaims } from '@/lib/bankid-claims';
 
 export function AuthCallback() {
   const oidcAuth = useOidcAuth();
@@ -27,11 +28,14 @@ export function AuthCallback() {
 
           // Claims från id_token (PKCE/public client — inget client_secret i frontend).
           const profile = oidcAuth.user.profile;
-          const name = typeof profile.name === 'string' ? profile.name : '';
-          const personalNumber =
-            typeof profile.personalNumber === 'string' ? profile.personalNumber : '';
+          const { personalNumber, name } = extractBankIDClaims(profile);
 
           if (!personalNumber) {
+            // Logga ENBART claim-nycklarna (aldrig värdena) så vi ser vad tenanten skickar.
+            console.error(
+              '[AuthCallback] Personnummer saknas i id_token. Tillgängliga claims:',
+              Object.keys(profile)
+            );
             setError('BankID-svaret saknade personnummer. Kontrollera Signicat-claims.');
             return;
           }
