@@ -149,6 +149,17 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
         sessionStorage.setItem(flagKey, '1')
       }
 
+      // Blandat identitetsläge: om en gammal Supabase-session ligger kvar och tillhör
+      // en ANNAN användare än BankID-identiteten, logga ut den så vi inte läser fel profil.
+      if (userId) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user && session.user.id !== userId) {
+          console.warn('[AuthContext] Gammal Supabase-session tillhör annan användare — loggar ut den.')
+          await supabase.auth.signOut()
+          setUser(null)
+        }
+      }
+
       let engagements: EngagementData | undefined
       try {
         const eng = await callEdgeFunction<{ data: EngagementData }>('get-my-companies', { personalNumber })

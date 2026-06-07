@@ -3,6 +3,17 @@ import { callEdgeFunction } from '@/lib/edge-functions'
 import { supabase } from '@/lib/supabase'
 import type { CompanyData } from '@/types/dashboard'
 
+// Extrahera ett läsbart meddelande från Error ELLER plain-object-fel som
+// PostgrestError ({ message, details, hint, code }) — annars blev allt "Unknown error".
+function errMessage(err: unknown, fallback = 'Något gick fel'): string {
+  if (err instanceof Error) return err.message
+  if (err && typeof err === 'object' && 'message' in err) {
+    const m = (err as { message: unknown }).message
+    if (typeof m === 'string' && m) return m
+  }
+  return fallback
+}
+
 export function useCompanyData(userId: string | undefined) {
   const [companyData, setCompanyData] = useState<CompanyData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -16,7 +27,7 @@ export function useCompanyData(userId: string | undefined) {
         .from('user_profiles')
         .select('company_data, company_name, org_number')
         .eq('id', userId)
-        .single()
+        .maybeSingle() // 0 rader -> data null (inget fel); behåll throw för riktiga fel
       if (dbError) throw dbError
       if (data?.company_data) {
         setCompanyData(data.company_data as CompanyData)
@@ -27,7 +38,7 @@ export function useCompanyData(userId: string | undefined) {
         })
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      setError(errMessage(err))
     } finally {
       setLoading(false)
     }
@@ -47,7 +58,7 @@ export function useCompanyData(userId: string | undefined) {
       setCompanyData(result.data)
       return result.data
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      setError(errMessage(err))
       return null
     } finally {
       setLoading(false)
