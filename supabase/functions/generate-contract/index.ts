@@ -161,6 +161,7 @@ serve(async (req) => {
         input_data: formAnswers,
         content_markdown: qa.wasAutoDelivered ? (finalContract.content_markdown || null) : null,
         review_points: qa.wasAutoDelivered ? (finalContract.review_points ?? null) : null,
+        summary: qa.wasAutoDelivered ? (finalContract.summary || null) : null,
         status: qa.wasAutoDelivered ? 'generated' : 'flagged',
         qa_review_id: qa.qaReviewId,
         qa_status: qa.qaStatus,

@@ -4,7 +4,7 @@ import { callEdgeFunction } from '@/lib/edge-functions'
 import { hasTrustLevel } from '@/types/dashboard'
 import {
   FileSignature, Users, Briefcase, Building2, ShieldCheck, AlertTriangle,
-  Loader2, ArrowLeft, ArrowRight, Copy, CheckCircle2, Clock, Sparkles,
+  Loader2, ArrowLeft, ArrowRight, Copy, CheckCircle2, Clock, Sparkles, Download,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -227,10 +227,13 @@ function ChoiceRow<T extends string>({ label, options, value, onChange }: {
 // ---------------------------------------------------------------------------
 
 export function ContractEngine() {
-  const { user, profile, trustLevel, signInWithBankID } = useAuth()
+  const { user, profile, trustLevel, signInWithBankID, activeCompany } = useAuth()
   const isBankId = hasTrustLevel(trustLevel, 'bankid')
 
   const firstCompany = profile?.engagements?.items?.[0]
+  // Aktivt bolag (valt i "Dina bolag") har företräde — fallback till första engagemanget
+  const ownCompanyName = activeCompany?.name ?? firstCompany?.companyName ?? ''
+  const ownCompanyOrgnr = activeCompany?.orgNumber ?? firstCompany?.orgNumber ?? ''
 
   const [view, setView] = useState<ViewState>('select')
   const [contractType, setContractType] = useState<ContractType>('nda')
@@ -238,12 +241,14 @@ export function ContractEngine() {
   const [result, setResult] = useState<GenerateResponse | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [copied, setCopied] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const [nda, setNda] = useState<NdaForm>({
     avtalstyp: 'ensidigt',
-    utgivareNamn: firstCompany?.companyName ?? '',
-    utgivareOrgnr: firstCompany?.orgNumber ?? '',
-    utgivareAdress: '',
+    utgivareNamn: ownCompanyName,
+    utgivareOrgnr: ownCompanyOrgnr,
+    utgivareAdress: activeCompany?.address ?? '',
     mottagareNamn: '',
     mottagareOrgnr: '',
     mottagareAdress: '',
@@ -312,12 +317,12 @@ export function ContractEngine() {
         contractType,
         formAnswers,
         companyData: contractType === 'nda'
-          ? { name: nda.utgivareNamn, orgNumber: nda.utgivareOrgnr }
-          : { name: firstCompany?.companyName, orgNumber: firstCompany?.orgNumber },
+          ? (activeCompany ?? { name: nda.utgivareNamn, orgNumber: nda.utgivareOrgnr })
+          : (activeCompany ?? { name: ownCompanyName, orgNumber: ownCompanyOrgnr }),
         trustLevel,
         userId: user?.id || profile?.id || null,
-        orgNumber: contractType === 'nda' ? nda.utgivareOrgnr : firstCompany?.orgNumber || null,
-        companyName: contractType === 'nda' ? nda.utgivareNamn : firstCompany?.companyName || null,
+        orgNumber: contractType === 'nda' ? nda.utgivareOrgnr : ownCompanyOrgnr || null,
+        companyName: contractType === 'nda' ? nda.utgivareNamn : ownCompanyName || null,
       })
 
       setResult(response)
@@ -334,6 +339,26 @@ export function ContractEngine() {
     await navigator.clipboard.writeText(result.content_markdown)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleExportPdf = async () => {
+    if (!result?.contractId) return
+    setExporting(true)
+    setExportError(null)
+    try {
+      const response = await callEdgeFunction<{ avtalUrl: string; instruktionerUrl: string }>('export-contract-pdf', {
+        contractId: result.contractId,
+        userId: user?.id || profile?.id || null,
+      })
+      // Öppna båda dokumenten: avtalet (rent, UTKAST-stämplat) + ASTRA-instruktionerna
+      window.open(response.avtalUrl, '_blank', 'noopener')
+      setTimeout(() => window.open(response.instruktionerUrl, '_blank', 'noopener'), 300)
+    } catch (err) {
+      console.error('export-contract-pdf failed:', err)
+      setExportError(err instanceof Error ? err.message : 'PDF-exporten misslyckades')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const reset = () => {
@@ -493,14 +518,31 @@ export function ContractEngine() {
             <h1 className="text-2xl font-bold tracking-tight text-[#0E3047]">{result.title}</h1>
             {result.summary && <p className="text-gray-500 mt-1 text-sm">{result.summary}</p>}
           </div>
-          <button
-            onClick={handleCopy}
-            className="shrink-0 flex items-center gap-1.5 bg-[#0E3047] text-[#FAF6EE] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#1A4060] transition-colors"
-          >
-            {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-            {copied ? 'Kopierat' : 'Kopiera'}
-          </button>
+          <div className="shrink-0 flex items-center gap-2">
+            <button
+              onClick={handleExportPdf}
+              disabled={exporting || !result.contractId}
+              className="flex items-center gap-1.5 bg-[#B5453B] text-[#FAF6EE] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#9E3B32] transition-colors disabled:opacity-50"
+            >
+              {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              {exporting ? 'Skapar PDF...' : 'Ladda ner PDF'}
+            </button>
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 bg-[#0E3047] text-[#FAF6EE] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#1A4060] transition-colors"
+            >
+              {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+              {copied ? 'Kopierat' : 'Kopiera'}
+            </button>
+          </div>
         </div>
+
+        {exportError && (
+          <div className="flex items-start gap-2 text-xs text-[#B5453B] bg-[#B5453B]/5 border border-[#B5453B]/20 rounded-lg p-3">
+            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+            <span>{exportError}</span>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
           <Sparkles size={14} />
@@ -529,7 +571,9 @@ export function ContractEngine() {
 
         <p className="text-xs text-gray-400 text-center max-w-lg mx-auto">
           Detta är ett grunddokument framtaget med Johns perspektiv. Granska punkterna ovan och
-          anpassa avtalet till din situation innan det används.
+          anpassa avtalet till din situation innan det används. PDF-nedladdningen innehåller två
+          dokument: avtalet (UTKAST-märkt) och ett instruktionsdokument från ASTRA ADVOKATER med
+          användningsguide och viktig information.
         </p>
 
         <div className="flex items-center justify-center gap-3 pb-4">
