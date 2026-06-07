@@ -30,6 +30,16 @@ const TOOLS: ToolDefinition[] = [
     requiredTrust: 'org_nr',
   },
   {
+    id: 'avtalsmotorn',
+    name: 'Avtalsmotorn',
+    description: 'Skapa skräddarsydda avtal — NDA och anställningsavtal på minuter',
+    icon: 'FileSignature',
+    price: 'Gratis',
+    route: '/dashboard/verktyg/avtal',
+    requiredTrust: 'bankid',
+    badge: 'Ny',
+  },
+  {
     id: 'readiness-check',
     name: 'Readiness Check',
     description: 'Utvärdera din strategiska mognad innan bolagsbildning',

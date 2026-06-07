@@ -11,6 +11,7 @@ import { DevelopmentZone } from '@/components/dashboard/DevelopmentZone'
 import { SettingsPage } from '@/components/dashboard/SettingsPage'
 import { StartupKit } from '@/pages/StartupKit'
 import { HealthCheck } from '@/pages/HealthCheck'
+import { ContractEngine } from '@/pages/ContractEngine'
 import { Admin } from '@/pages/Admin'
 
 function RootRedirect() {
@@ -54,6 +55,7 @@ function App() {
           <Route path="verktyg" element={<ToolsZone />} />
           <Route path="verktyg/startup-kit" element={<StartupKit />} />
           <Route path="verktyg/health-check" element={<HealthCheck />} />
+          <Route path="verktyg/avtal" element={<ContractEngine />} />
           <Route path="verktyg/readiness-check" element={
             <div className="space-y-4">
               <h1 className="text-xl font-bold text-[#0E3047]">Readiness Check</h1>
