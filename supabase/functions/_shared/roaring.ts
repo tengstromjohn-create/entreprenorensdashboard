@@ -101,8 +101,15 @@ export async function fetchEngagements(
   token: string,
   personalNumber: string
 ): Promise<{ ok: boolean; data?: EngagementData; error?: string }> {
+  // Sandbox/test-override: om Supabase-secreten TEST_ENGAGEMENT_PNR är satt används
+  // den i stället för det inloggade personnumret. Gör att "Dina bolag" går att demo:a
+  // med test-BankID-personer (t.ex. Nisse Entreprenör) som saknar egna engagemang.
+  // OBS: avregistrera secreten (`supabase secrets unset TEST_ENGAGEMENT_PNR`) före produktion.
+  const override = Deno.env.get('TEST_ENGAGEMENT_PNR')?.replace(/[-\s]/g, '')
+  const pnr = override || personalNumber
+
   // Exkludera revisor (8) och revisorssuppleant (9) direkt i anropet
-  const path = `/se/company/engagement/3.0/${personalNumber}?excludeWithRoleCode=8&excludeWithRoleCode=9`
+  const path = `/se/company/engagement/3.0/${pnr}?excludeWithRoleCode=8&excludeWithRoleCode=9`
   const res = await callRoaring<unknown>(token, path)
 
   if (!res.ok) {
