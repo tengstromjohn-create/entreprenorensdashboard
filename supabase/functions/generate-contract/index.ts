@@ -83,7 +83,10 @@ serve(async (req) => {
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.2, // lägre än health check — juridisk text ska vara förutsägbar
-              maxOutputTokens: 8192,
+              // Thinking av + högre tak: tanke-tokens räknas in i maxOutputTokens och
+              // trunkerade health check-JSON:en. Samma skydd här.
+              maxOutputTokens: 16384,
+              thinkingConfig: { thinkingBudget: 0 },
               responseMimeType: 'application/json',
             },
           }),

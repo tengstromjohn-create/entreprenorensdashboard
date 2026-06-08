@@ -7,13 +7,19 @@ import { callEdgeFunction } from '@/lib/edge-functions'
 import { hasTrustLevel } from '@/types/dashboard'
 import { UpgradeModal } from '@/components/shared/UpgradeModal'
 import {
+  HEALTH_CHECK_STEPS,
+  REQUIRED_QUESTION_IDS,
+  labelForAnswer,
+  type HealthCheckStep,
+} from '@/lib/healthCheckQuestions'
+import {
   ArrowLeft,
   ArrowRight,
   Building2,
-  Briefcase,
   Scale,
   Coins,
   Users,
+  FileSignature,
   Loader2,
   CheckCircle2,
   AlertTriangle,
@@ -24,37 +30,12 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  Database,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-interface FormData {
-  // Step 1: Grundinfo
-  orgNumber: string
-  companyName: string
-  // Step 2: Affärsmodell & marknad
-  businessDescription: string
-  targetMarket: string
-  revenueModel: string
-  competitiveAdvantage: string
-  // Step 3: Juridik & struktur
-  hasShareholderAgreement: string
-  hasBoardRules: string
-  articlesUpdated: string
-  hasCeoInstruction: string
-  // Step 4: Ekonomi & finansiering
-  shareCapital: string
-  financingStrategy: string
-  ownershipStructure: string
-  balanceSheetRisk: string
-  // Step 5: Team & tillväxt
-  employeeCount: string
-  hasEmploymentContracts: string
-  hasInsurance: string
-  hasGdprPolicy: string
-}
 
 interface AnalysisArea {
   name: string
@@ -88,34 +69,7 @@ type ViewState = 'form' | 'loading' | 'results' | 'error'
 // Constants
 // ---------------------------------------------------------------------------
 
-const STEPS = [
-  { label: 'Grundinfo', icon: Building2 },
-  { label: 'Affärsmodell', icon: Briefcase },
-  { label: 'Juridik', icon: Scale },
-  { label: 'Ekonomi', icon: Coins },
-  { label: 'Team', icon: Users },
-]
-
-const INITIAL_FORM: FormData = {
-  orgNumber: '',
-  companyName: '',
-  businessDescription: '',
-  targetMarket: '',
-  revenueModel: '',
-  competitiveAdvantage: '',
-  hasShareholderAgreement: '',
-  hasBoardRules: '',
-  articlesUpdated: '',
-  hasCeoInstruction: '',
-  shareCapital: '',
-  financingStrategy: '',
-  ownershipStructure: '',
-  balanceSheetRisk: '',
-  employeeCount: '',
-  hasEmploymentContracts: '',
-  hasInsurance: '',
-  hasGdprPolicy: '',
-}
+const STEP_ICONS = { Building2, Scale, FileSignature, Users, Coins }
 
 const SCORE_COLORS = {
   green: '#16A34A',
@@ -152,88 +106,78 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
   )
 }
 
-function SelectField({
+function RadioField({
   label,
+  help,
   value,
   onChange,
   options,
-  placeholder = 'Välj...',
 }: {
   label: string
+  help?: string
   value: string
   onChange: (v: string) => void
   options: { value: string; label: string }[]
-  placeholder?: string
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-[#0E3047] mb-1.5">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-[#0E3047] focus:outline-none focus:ring-2 focus:ring-[#0E3047]/20 focus:border-[#0E3047]"
-      >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <label className="block text-sm font-medium text-[#0E3047] mb-1">{label}</label>
+      {help && <p className="text-xs text-[#4B6680] mb-2">{help}</p>}
+      <div className="grid gap-2 sm:grid-cols-2">
+        {options.map((o) => {
+          const selected = value === o.value
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => onChange(o.value)}
+              className={`flex items-center gap-2.5 text-left rounded-lg border px-3 py-2.5 text-sm transition-all ${
+                selected
+                  ? 'border-[#0E3047] ring-1 ring-[#0E3047]/20 bg-[#FAF6EE]/60 text-[#0E3047]'
+                  : 'border-gray-200 hover:border-[#0E3047]/40 text-gray-700'
+              }`}
+            >
+              <span
+                className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                  selected ? 'border-[#0E3047]' : 'border-gray-300'
+                }`}
+              >
+                {selected && <span className="w-2 h-2 rounded-full bg-[#0E3047]" />}
+              </span>
+              {o.label}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
 
 function TextAreaField({
   label,
+  help,
   value,
   onChange,
   placeholder,
   rows = 3,
 }: {
   label: string
+  help?: string
   value: string
   onChange: (v: string) => void
-  placeholder: string
+  placeholder?: string
   rows?: number
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-[#0E3047] mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-[#0E3047] mb-1">{label}</label>
+      {help && <p className="text-xs text-[#4B6680] mb-2">{help}</p>}
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
         className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-[#0E3047] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0E3047]/20 focus:border-[#0E3047] resize-none"
-      />
-    </div>
-  )
-}
-
-function InputField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  disabled,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  placeholder: string
-  disabled?: boolean
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-[#0E3047] mb-1.5">{label}</label>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-[#0E3047] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0E3047]/20 focus:border-[#0E3047] disabled:bg-gray-50 disabled:text-gray-500"
       />
     </div>
   )
@@ -296,9 +240,7 @@ function AreaCard({
             <StatusIcon size={16} style={{ color }} />
             <h3 className="font-semibold text-[#0E3047]">{area.name}</h3>
           </div>
-          <p className="text-sm text-gray-500 mt-0.5 truncate">
-            {area.key_findings[0]}
-          </p>
+          <p className="text-sm text-gray-500 mt-0.5 truncate">{area.key_findings[0]}</p>
         </div>
         {expanded ? (
           <ChevronUp size={18} className="text-gray-400 flex-shrink-0" />
@@ -309,7 +251,6 @@ function AreaCard({
 
       {expanded && (
         <div className="px-5 pb-5 space-y-4 border-t border-gray-100 pt-4">
-          {/* Key findings */}
           <div>
             <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Observationer</h4>
             <ul className="space-y-1.5">
@@ -322,7 +263,6 @@ function AreaCard({
             </ul>
           </div>
 
-          {/* Recommendations */}
           {area.recommendations.length > 0 && (
             <div>
               <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Rekommendationer</h4>
@@ -332,16 +272,12 @@ function AreaCard({
                   return (
                     <div key={i} className="rounded-lg bg-[#FAFAF8] p-3">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pri.color}`}>
-                          {pri.label}
-                        </span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pri.color}`}>{pri.label}</span>
                         <span className="text-sm font-medium text-[#0E3047]">{rec.title}</span>
                       </div>
                       <p className="text-sm text-gray-600">{rec.description}</p>
                       {rec.consequence_if_skipped && (
-                        <p className="text-xs text-gray-400 mt-1 italic">
-                          Om du hoppar över: {rec.consequence_if_skipped}
-                        </p>
+                        <p className="text-xs text-gray-400 mt-1 italic">Om du hoppar över: {rec.consequence_if_skipped}</p>
                       )}
                     </div>
                   )
@@ -350,14 +286,11 @@ function AreaCard({
             </div>
           )}
 
-          {/* Johns perspective */}
           {isBankId && area.johns_perspective ? (
             <div className="rounded-lg bg-green-50 border border-green-100 p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles size={14} className="text-green-600" />
-                <span className="text-xs font-semibold text-green-700 uppercase tracking-wider">
-                  Johns perspektiv
-                </span>
+                <span className="text-xs font-semibold text-green-700 uppercase tracking-wider">Johns perspektiv</span>
               </div>
               <p className="text-sm text-green-800 leading-relaxed">{area.johns_perspective}</p>
             </div>
@@ -376,26 +309,63 @@ function AreaCard({
   )
 }
 
-// ---------------------------------------------------------------------------
-// YES/NO options
-// ---------------------------------------------------------------------------
+// Autohämtad bolagsdata — visas, frågas inte
+function AutoDataPanel({ company }: { company: Record<string, unknown> | null }) {
+  if (!company) return null
+  const rows: { label: string; value?: string }[] = [
+    { label: 'Bolagsnamn', value: company.name as string },
+    { label: 'Org.nr', value: company.orgNumber as string },
+    { label: 'Bolagsform', value: company.companyType as string },
+    { label: 'Status', value: company.status as string },
+    { label: 'Säte', value: company.sede as string },
+    { label: 'Registrerat', value: company.registrationDate as string },
+  ].filter((r) => r.value)
 
-const YES_NO_OPTIONS = [
-  { value: 'yes', label: 'Ja' },
-  { value: 'no', label: 'Nej' },
-  { value: 'unsure', label: 'Vet ej' },
-]
+  // deno-irrelevant
+  const board = (company.boardMembers as { name: string; role: string }[] | undefined) ?? []
+  const signatory = company.signatory as { description?: string } | undefined
 
-const YES_NO_NA_OPTIONS = [
-  { value: 'yes', label: 'Ja' },
-  { value: 'no', label: 'Nej' },
-  { value: 'na', label: 'Ej aktuellt' },
-  { value: 'unsure', label: 'Vet ej' },
-]
+  return (
+    <div className="rounded-lg bg-[#F5F5F0] border border-[#E8E4DE] p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Database size={15} className="text-[#0E3047]" />
+        <h3 className="text-sm font-semibold text-[#0E3047]">Hämtat automatiskt från Bolagsverket</h3>
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+        {rows.map((r) => (
+          <div key={r.label} className="flex flex-col">
+            <span className="text-[11px] text-gray-400">{r.label}</span>
+            <span className="text-sm text-[#0E3047]">{r.value}</span>
+          </div>
+        ))}
+      </div>
+      {board.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-[#E8E4DE]/70">
+          <span className="text-[11px] text-gray-400">Styrelse</span>
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {board.map((m, i) => (
+              <span key={i} className="text-xs bg-white text-[#0E3047] px-2 py-0.5 rounded-full border border-[#E8E4DE]">
+                {m.name}{m.role ? ` · ${m.role}` : ''}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {signatory?.description && (
+        <div className="mt-3 pt-3 border-t border-[#E8E4DE]/70">
+          <span className="text-[11px] text-gray-400">Firmateckning</span>
+          <p className="text-xs text-[#4B6680] mt-1">{signatory.description}</p>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
+
+const STEPS: HealthCheckStep[] = HEALTH_CHECK_STEPS
 
 export function HealthCheck() {
   const navigate = useNavigate()
@@ -404,58 +374,36 @@ export function HealthCheck() {
   // BankID-användare saknar Supabase-session — bolaget kan inte läsas från user_profiles.
   // activeCompany (valt i "Dina bolag") är då källan. DB-läsningen har företräde om den finns.
   const effectiveCompany = companyData ?? activeCompany ?? null
+
   const { refresh: refreshHealthCheck } = useHealthCheck(user?.id)
 
   const [view, setView] = useState<ViewState>('form')
   const [step, setStep] = useState(0)
-  const [form, setForm] = useState<FormData>(INITIAL_FORM)
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [orgFallback, setOrgFallback] = useState({ orgNumber: '', companyName: '' })
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [showUpgrade, setShowUpgrade] = useState(false)
 
   const isBankId = hasTrustLevel(trustLevel, 'bankid')
 
-  // Auto-fill org number from profile
   useEffect(() => {
     if (user?.id) fetchFromProfile()
   }, [user?.id, fetchFromProfile])
 
-  useEffect(() => {
-    if (effectiveCompany) {
-      setForm((prev) => ({
-        ...prev,
-        orgNumber: effectiveCompany.orgNumber || prev.orgNumber,
-        companyName: effectiveCompany.name || prev.companyName,
-      }))
-    }
-  }, [effectiveCompany])
+  const orgNumber = effectiveCompany?.orgNumber || orgFallback.orgNumber
+  const companyName = effectiveCompany?.name || orgFallback.companyName
 
-  // Auto-fill from profile org_number
-  useEffect(() => {
-    if (profile?.org_number && !form.orgNumber) {
-      setForm((prev) => ({ ...prev, orgNumber: profile.org_number! }))
-    }
-  }, [profile, form.orgNumber])
+  const setAnswer = (id: string, value: string) => setAnswers((prev) => ({ ...prev, [id]: value }))
 
-  const updateField = (field: keyof FormData, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
-  }
+  const currentStep = STEPS[step]
 
   const canAdvance = (): boolean => {
-    switch (step) {
-      case 0:
-        return !!form.orgNumber.trim()
-      case 1:
-        return !!form.businessDescription.trim()
-      case 2:
-        return !!form.hasShareholderAgreement
-      case 3:
-        return !!form.shareCapital
-      case 4:
-        return !!form.employeeCount
-      default:
-        return true
-    }
+    // Steg 0 kräver org-nummer (autohämtat eller manuellt)
+    if (step === 0 && !orgNumber.trim()) return false
+    return currentStep.questions
+      .filter((q) => REQUIRED_QUESTION_IDS.has(q.id))
+      .every((q) => !!answers[q.id])
   }
 
   const handleSubmit = async () => {
@@ -463,36 +411,25 @@ export function HealthCheck() {
     setErrorMessage('')
 
     try {
-      const surveyAnswers = {
-        businessDescription: form.businessDescription,
-        targetMarket: form.targetMarket,
-        revenueModel: form.revenueModel,
-        competitiveAdvantage: form.competitiveAdvantage,
-        hasShareholderAgreement: form.hasShareholderAgreement,
-        hasBoardRules: form.hasBoardRules,
-        articlesUpdated: form.articlesUpdated,
-        hasCeoInstruction: form.hasCeoInstruction,
-        shareCapital: form.shareCapital,
-        financingStrategy: form.financingStrategy,
-        ownershipStructure: form.ownershipStructure,
-        balanceSheetRisk: form.balanceSheetRisk,
-        employeeCount: form.employeeCount,
-        hasEmploymentContracts: form.hasEmploymentContracts,
-        hasInsurance: form.hasInsurance,
-        hasGdprPolicy: form.hasGdprPolicy,
-      }
-
-      const response = await callEdgeFunction<{ analysis: AnalysisResult }>(
-        'generate-health-check',
-        {
-          orgNumber: form.orgNumber,
-          companyData: effectiveCompany || { name: form.companyName, orgNumber: form.orgNumber },
-          surveyAnswers,
-          trustLevel: isBankId ? 'bankid' : 'org_only',
-          // BankID-användare saknar Supabase-session — profile.id (från bankid-auth) är deras userId
-          userId: user?.id || profile?.id || undefined,
-        }
+      // Bygg en läsbar svarslista (område + fråga + svar) för analysprompten
+      const readable = STEPS.flatMap((s) =>
+        s.questions
+          .filter((q) => answers[q.id])
+          .map((q) => ({
+            area: q.area,
+            question: q.label,
+            answer: labelForAnswer(q.id, answers[q.id]),
+          }))
       )
+
+      const response = await callEdgeFunction<{ analysis: AnalysisResult }>('generate-health-check', {
+        orgNumber,
+        companyData: effectiveCompany || { name: companyName, orgNumber },
+        surveyAnswers: answers,
+        surveyReadable: readable,
+        trustLevel: isBankId ? 'bankid' : 'org_only',
+        userId: user?.id || profile?.id || undefined,
+      })
 
       if (response.analysis) {
         setResult(response.analysis)
@@ -520,212 +457,84 @@ export function HealthCheck() {
   // ---------------------------------------------------------------------------
 
   if (view === 'form') {
+    const Icon = STEP_ICONS[currentStep.icon]
     return (
       <div className="max-w-2xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-[#0E3047]">Corporate Health Check</h1>
-          <p className="text-gray-500 mt-1">
-            Analysera ditt bolags juridiska och regulatoriska status.
-          </p>
+          <p className="text-gray-500 mt-1">Analysera ditt bolags juridiska status och riskbild.</p>
         </div>
 
         <ProgressBar step={step} total={STEPS.length} />
 
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-          {/* Step header */}
-          <div className="flex items-center gap-3 mb-6">
-            {(() => {
-              const Icon = STEPS[step].icon
-              return <Icon size={20} className="text-[#0E3047]" />
-            })()}
-            <h2 className="text-lg font-semibold text-[#0E3047]">{STEPS[step].label}</h2>
+          <div className="flex items-center gap-3 mb-5">
+            <Icon size={20} className="text-[#0E3047]" />
+            <h2 className="text-lg font-semibold text-[#0E3047]">{currentStep.label}</h2>
           </div>
 
-          {/* Step content */}
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* Steg 0: autohämtad bolagsdata + ev. manuell org-input om data saknas */}
             {step === 0 && (
-              <>
-                <InputField
-                  label="Organisationsnummer"
-                  value={form.orgNumber}
-                  onChange={(v) => updateField('orgNumber', v)}
-                  placeholder="XXXXXX-XXXX"
-                  disabled={!!effectiveCompany?.orgNumber}
-                />
-                <InputField
-                  label="Bolagsnamn"
-                  value={form.companyName}
-                  onChange={(v) => updateField('companyName', v)}
-                  placeholder="AB Företaget"
-                  disabled={!!effectiveCompany?.name}
-                />
-                {effectiveCompany && (
-                  <div className="rounded-lg bg-green-50 border border-green-100 p-3 flex items-center gap-2 text-sm text-green-700">
-                    <CheckCircle2 size={16} />
-                    Bolagsdata hämtad automatiskt
-                  </div>
-                )}
-              </>
+              effectiveCompany ? (
+                <AutoDataPanel company={effectiveCompany as unknown as Record<string, unknown>} />
+              ) : (
+                <div className="space-y-3 rounded-lg bg-amber-50 border border-amber-100 p-4">
+                  <p className="text-sm text-amber-800">
+                    Inget bolag valt. Välj ett bolag under "Dina bolag" eller ange organisationsnummer här.
+                  </p>
+                  <input
+                    type="text"
+                    value={orgFallback.orgNumber}
+                    onChange={(e) => setOrgFallback((p) => ({ ...p, orgNumber: e.target.value }))}
+                    placeholder="Organisationsnummer (XXXXXX-XXXX)"
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={orgFallback.companyName}
+                    onChange={(e) => setOrgFallback((p) => ({ ...p, companyName: e.target.value }))}
+                    placeholder="Bolagsnamn"
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm"
+                  />
+                </div>
+              )
             )}
 
-            {step === 1 && (
-              <>
-                <TextAreaField
-                  label="Beskriv din verksamhet"
-                  value={form.businessDescription}
-                  onChange={(v) => updateField('businessDescription', v)}
-                  placeholder="Vad gör bolaget? Vilken bransch? Hur länge har ni varit verksamma?"
-                />
-                <TextAreaField
-                  label="Målmarknad och kunder"
-                  value={form.targetMarket}
-                  onChange={(v) => updateField('targetMarket', v)}
-                  placeholder="Vilka är era kunder? B2B eller B2C? Geografi?"
-                  rows={2}
-                />
-                <SelectField
-                  label="Intäktsmodell"
-                  value={form.revenueModel}
-                  onChange={(v) => updateField('revenueModel', v)}
-                  options={[
-                    { value: 'subscription', label: 'Prenumeration/SaaS' },
-                    { value: 'transaction', label: 'Transaktionsbaserad' },
-                    { value: 'consulting', label: 'Konsulting/Tjänster' },
-                    { value: 'product', label: 'Produktförsäljning' },
-                    { value: 'marketplace', label: 'Marknadsplats/Provision' },
-                    { value: 'mixed', label: 'Blandad modell' },
-                    { value: 'pre_revenue', label: 'Ännu ingen intäkt' },
-                  ]}
-                />
-                <TextAreaField
-                  label="Konkurrensfördel"
-                  value={form.competitiveAdvantage}
-                  onChange={(v) => updateField('competitiveAdvantage', v)}
-                  placeholder="Vad skiljer er från konkurrenterna?"
-                  rows={2}
-                />
-              </>
-            )}
+            {currentStep.intro && <p className="text-sm text-[#4B6680]">{currentStep.intro}</p>}
 
-            {step === 2 && (
-              <>
-                <SelectField
-                  label="Finns aktieägaravtal?"
-                  value={form.hasShareholderAgreement}
-                  onChange={(v) => updateField('hasShareholderAgreement', v)}
-                  options={YES_NO_OPTIONS}
+            {currentStep.questions.map((q) =>
+              q.type === 'radio' && q.options ? (
+                <RadioField
+                  key={q.id}
+                  label={q.label + (REQUIRED_QUESTION_IDS.has(q.id) ? '' : ' (valfritt)')}
+                  help={q.help}
+                  value={answers[q.id] || ''}
+                  onChange={(v) => setAnswer(q.id, v)}
+                  options={q.options}
                 />
-                <SelectField
-                  label="Finns styrelsens arbetsordning?"
-                  value={form.hasBoardRules}
-                  onChange={(v) => updateField('hasBoardRules', v)}
-                  options={YES_NO_OPTIONS}
-                />
-                <SelectField
-                  label="Är bolagsordningen uppdaterad och anpassad?"
-                  value={form.articlesUpdated}
-                  onChange={(v) => updateField('articlesUpdated', v)}
-                  options={YES_NO_OPTIONS}
-                />
-                <SelectField
-                  label="Finns VD-instruktion?"
-                  value={form.hasCeoInstruction}
-                  onChange={(v) => updateField('hasCeoInstruction', v)}
-                  options={YES_NO_NA_OPTIONS}
-                />
-              </>
-            )}
-
-            {step === 3 && (
-              <>
-                <SelectField
-                  label="Aktiekapital"
-                  value={form.shareCapital}
-                  onChange={(v) => updateField('shareCapital', v)}
-                  options={[
-                    { value: '25000', label: '25 000 kr (minimum)' },
-                    { value: '50000-100000', label: '50 000 - 100 000 kr' },
-                    { value: '100000-500000', label: '100 000 - 500 000 kr' },
-                    { value: '500000+', label: 'Över 500 000 kr' },
-                  ]}
-                />
+              ) : (
                 <TextAreaField
-                  label="Finansieringsstrategi"
-                  value={form.financingStrategy}
-                  onChange={(v) => updateField('financingStrategy', v)}
-                  placeholder="Hur finansieras bolaget? Externt kapital, bootstrapping, lån?"
-                  rows={2}
+                  key={q.id}
+                  label={q.label + (REQUIRED_QUESTION_IDS.has(q.id) ? '' : ' (valfritt)')}
+                  help={q.help}
+                  value={answers[q.id] || ''}
+                  onChange={(v) => setAnswer(q.id, v)}
+                  placeholder={q.placeholder}
                 />
-                <TextAreaField
-                  label="Ägarstruktur"
-                  value={form.ownershipStructure}
-                  onChange={(v) => updateField('ownershipStructure', v)}
-                  placeholder="Hur ser ägarstrukturen ut? Antal ägare, fördelning?"
-                  rows={2}
-                />
-                <SelectField
-                  label="Finns risk för kontrollbalansräkning?"
-                  value={form.balanceSheetRisk}
-                  onChange={(v) => updateField('balanceSheetRisk', v)}
-                  options={YES_NO_OPTIONS}
-                />
-              </>
-            )}
-
-            {step === 4 && (
-              <>
-                <SelectField
-                  label="Antal anställda"
-                  value={form.employeeCount}
-                  onChange={(v) => updateField('employeeCount', v)}
-                  options={[
-                    { value: '0', label: 'Inga anställda (enbart grundare)' },
-                    { value: '1-5', label: '1-5 anställda' },
-                    { value: '6-20', label: '6-20 anställda' },
-                    { value: '20+', label: 'Fler än 20 anställda' },
-                  ]}
-                />
-                <SelectField
-                  label="Finns anställningsavtal för alla?"
-                  value={form.hasEmploymentContracts}
-                  onChange={(v) => updateField('hasEmploymentContracts', v)}
-                  options={YES_NO_NA_OPTIONS}
-                />
-                <SelectField
-                  label="Finns ansvarsförsäkring och styrelseansvarsförsäkring?"
-                  value={form.hasInsurance}
-                  onChange={(v) => updateField('hasInsurance', v)}
-                  options={YES_NO_OPTIONS}
-                />
-                <SelectField
-                  label="Finns GDPR-policy och personuppgiftsbiträdesavtal?"
-                  value={form.hasGdprPolicy}
-                  onChange={(v) => updateField('hasGdprPolicy', v)}
-                  options={YES_NO_OPTIONS}
-                />
-              </>
+              )
             )}
           </div>
 
           {/* Navigation */}
           <div className="flex items-center justify-between mt-8 pt-4 border-t border-gray-100">
-            {step > 0 ? (
-              <button
-                onClick={() => setStep(step - 1)}
-                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#0E3047] transition-colors"
-              >
-                <ArrowLeft size={16} />
-                Tillbaka
-              </button>
-            ) : (
-              <button
-                onClick={() => navigate('/dashboard/verktyg')}
-                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#0E3047] transition-colors"
-              >
-                <ArrowLeft size={16} />
-                Verktyg
-              </button>
-            )}
+            <button
+              onClick={() => (step > 0 ? setStep(step - 1) : navigate('/dashboard/verktyg'))}
+              className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#0E3047] transition-colors"
+            >
+              <ArrowLeft size={16} />
+              {step > 0 ? 'Tillbaka' : 'Verktyg'}
+            </button>
 
             {step < STEPS.length - 1 ? (
               <button
@@ -766,10 +575,8 @@ export function HealthCheck() {
         </div>
         <div className="text-center">
           <h2 className="text-xl font-semibold text-[#0E3047] mb-2">Analyserar ditt bolag...</h2>
-          <p className="text-sm text-gray-500">
-            Vi granskar bolagsdata och dina svar med AI-driven juridisk expertis.
-          </p>
-          <p className="text-xs text-gray-400 mt-2">Detta tar vanligtvis 8-15 sekunder.</p>
+          <p className="text-sm text-gray-500">Vi granskar bolagsdata och dina svar med AI-driven juridisk expertis.</p>
+          <p className="text-xs text-gray-400 mt-2">Detta tar vanligtvis 10-20 sekunder.</p>
         </div>
       </div>
     )
@@ -809,7 +616,6 @@ export function HealthCheck() {
 
     return (
       <div className="max-w-3xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[#0E3047]">Analysresultat</h1>
@@ -827,7 +633,6 @@ export function HealthCheck() {
           </button>
         </div>
 
-        {/* Score overview */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
           <div className="flex items-center gap-8">
             <ScoreCircle score={result.total_score} color={scoreColor} size="lg" />
@@ -836,10 +641,7 @@ export function HealthCheck() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {result.areas.map((area) => (
                   <div key={area.name} className="flex items-center gap-2">
-                    <span
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: SCORE_COLORS[area.color] }}
-                    />
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: SCORE_COLORS[area.color] }} />
                     <span className="text-sm text-gray-600 truncate">{area.name}</span>
                     <span className="text-sm font-medium text-[#0E3047] ml-auto">{area.score}</span>
                   </div>
@@ -849,7 +651,6 @@ export function HealthCheck() {
           </div>
         </div>
 
-        {/* Top 3 actions */}
         {result.top_3_actions && result.top_3_actions.length > 0 && (
           <div className="bg-[#0E3047] rounded-xl p-6 text-white">
             <h3 className="font-semibold mb-3 flex items-center gap-2">
@@ -872,19 +673,12 @@ export function HealthCheck() {
           </div>
         )}
 
-        {/* Area cards */}
         <div className="space-y-3">
           {result.areas.map((area) => (
-            <AreaCard
-              key={area.name}
-              area={area}
-              isBankId={isBankId}
-              onUpgrade={() => setShowUpgrade(true)}
-            />
+            <AreaCard key={area.name} area={area} isBankId={isBankId} onUpgrade={() => setShowUpgrade(true)} />
           ))}
         </div>
 
-        {/* Upgrade CTA for non-BankID users */}
         {!isBankId && result.upgrade_cta && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 text-center">
             <ShieldCheck size={32} className="text-green-600 mx-auto mb-3" />
@@ -900,7 +694,6 @@ export function HealthCheck() {
           </div>
         )}
 
-        {/* Upgrade modal */}
         <UpgradeModal
           isOpen={showUpgrade}
           onClose={() => setShowUpgrade(false)}

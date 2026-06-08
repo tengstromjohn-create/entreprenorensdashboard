@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Users, Activity, Settings } from 'lucide-react';
+import { AdminHealthReviews } from '@/components/admin/AdminHealthReviews';
 
 export function Admin() {
   return (
@@ -14,6 +15,9 @@ export function Admin() {
         </div>
         <Badge variant="secondary">Admin</Badge>
       </div>
+
+      {/* Health Check-granskning — jurist kan rätta AI-analyser */}
+      <AdminHealthReviews />
 
       {/* TODO: ED-6 — Build admin panel with user management, analytics, etc. */}
       <div className="grid gap-4 md:grid-cols-2">
