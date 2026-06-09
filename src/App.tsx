@@ -5,7 +5,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Welcome } from '@/pages/Welcome'
 import { AuthCallback } from '@/pages/AuthCallback'
 import { DashboardHome } from '@/components/dashboard/DashboardHome'
-import { CompanyZone } from '@/components/dashboard/CompanyZone'
+import { Styrhytten } from '@/pages/Styrhytten'
 import { ToolsZone } from '@/components/dashboard/ToolsZone'
 import { DevelopmentZone } from '@/components/dashboard/DevelopmentZone'
 import { SettingsPage } from '@/components/dashboard/SettingsPage'
@@ -51,27 +51,11 @@ function App() {
           }
         >
           <Route index element={<DashboardHome />} />
-          <Route path="bolag" element={<CompanyZone />} />
+          <Route path="bolag" element={<Styrhytten />} />
           <Route path="verktyg" element={<ToolsZone />} />
           <Route path="verktyg/startup-kit" element={<StartupKit />} />
           <Route path="verktyg/health-check" element={<HealthCheck />} />
           <Route path="verktyg/avtal" element={<ContractEngine />} />
-          <Route path="verktyg/readiness-check" element={
-            <div className="space-y-4">
-              <h1 className="text-xl font-bold text-[#0E3047]">Readiness Check</h1>
-              <div className="bg-[#F5F5F0] rounded-lg p-8 text-center">
-                <p className="text-gray-500">Readiness Check — kommer snart</p>
-              </div>
-            </div>
-          } />
-          <Route path="verktyg/checklistor" element={
-            <div className="space-y-4">
-              <h1 className="text-xl font-bold text-[#0E3047]">Checklistor & Mallar</h1>
-              <div className="bg-[#F5F5F0] rounded-lg p-8 text-center">
-                <p className="text-gray-500">Checklistor — kommer snart</p>
-              </div>
-            </div>
-          } />
           <Route path="utveckling" element={<DevelopmentZone />} />
           <Route path="installningar" element={<SettingsPage />} />
         </Route>

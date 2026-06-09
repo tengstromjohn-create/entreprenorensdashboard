@@ -2,9 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanyData } from '@/hooks/useCompanyData'
-import { useHealthCheck } from '@/hooks/useHealthCheck'
 import { CompanyCard } from '@/components/shared/CompanyCard'
-import { HealthCheckSummary } from '@/components/shared/HealthCheckSummary'
 import { TrustBadge } from '@/components/shared/TrustBadge'
 import { hasTrustLevel } from '@/types/dashboard'
 import { Users, ArrowRight, Rocket, Search, FileSignature, Loader2, AlertCircle, Building2, ChevronDown, GraduationCap } from 'lucide-react'
@@ -26,7 +24,6 @@ export function CompanyZone() {
   const { user, profile, trustLevel, activeCompany, setActiveCompany } = useAuth()
   const navigate = useNavigate()
   const { companyData, loading, error, refreshCompanyData, fetchFromProfile } = useCompanyData(user?.id)
-  const { latestResult } = useHealthCheck(user?.id)
 
   const engagements = profile?.engagements?.items ?? []
   const hasEngagements = engagements.length > 0
@@ -265,27 +262,6 @@ export function CompanyZone() {
             ))}
           </div>
         </div>
-      )}
-
-      {/* Health Check-block — bara om vi har bolagsdata */}
-      {companyData && (
-        latestResult ? (
-          <HealthCheckSummary
-            result={latestResult}
-            onRunAgain={() => navigate('/dashboard/verktyg/health-check')}
-            onViewDetails={() => navigate('/dashboard/verktyg/health-check')}
-          />
-        ) : (
-          <div className="bg-[#F5F5F0] rounded-lg p-6 text-center">
-            <p className="text-sm text-[#4B6680] mb-3">Du har inte kört Health Check ännu.</p>
-            <button
-              onClick={() => navigate('/dashboard/verktyg/health-check')}
-              className="bg-[#0E3047] text-[#FAF6EE] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#1A4060] transition-colors"
-            >
-              Kör din första Health Check
-            </button>
-          </div>
-        )
       )}
 
       {/* Empty state för icke-BankID utan bolagsdata (org_nr-spår) */}

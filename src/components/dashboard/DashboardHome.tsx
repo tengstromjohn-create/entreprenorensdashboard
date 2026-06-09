@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useCompanyData } from '@/hooks/useCompanyData'
 import { useHealthCheck } from '@/hooks/useHealthCheck'
 import { ArrowRight, Building2, Wrench, BookOpen, Sparkles } from 'lucide-react'
+import { HUB_NAME } from '@/lib/brand'
 
 export function DashboardHome() {
   const { user, profile } = useAuth()
@@ -64,9 +65,9 @@ export function DashboardHome() {
           <div className="w-10 h-10 rounded-lg bg-[#0E3047]/8 flex items-center justify-center mb-3" style={{ backgroundColor: 'rgba(14,48,71,0.08)' }}>
             <Building2 size={18} className="text-[#0E3047]" />
           </div>
-          <h3 className="font-semibold text-[#0E3047] mb-1">Mitt bolag</h3>
+          <h3 className="font-semibold text-[#0E3047] mb-1">{HUB_NAME}</h3>
           <p className="text-sm text-[#4B6680] mb-4">
-            {companyData ? companyData.name : 'Lägg till ditt bolag'}
+            {companyData ? companyData.name : 'Överblicka ditt bolag'}
           </p>
           <span className="text-xs text-[#0E3047] font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
             Visa mer <ArrowRight size={12} />

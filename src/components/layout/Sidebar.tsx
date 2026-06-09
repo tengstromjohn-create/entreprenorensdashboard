@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Building2, Wrench, BookOpen, Settings, Calendar, X, ShieldCheck } from 'lucide-react'
+import { Home, Compass, Wrench, BookOpen, Settings, Calendar, X, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { HUB_NAME } from '@/lib/brand'
 
 const navItems = [
   { to: '/dashboard', icon: Home, label: 'Hem', end: true },
-  { to: '/dashboard/bolag', icon: Building2, label: 'Mitt bolag' },
+  { to: '/dashboard/bolag', icon: Compass, label: HUB_NAME },
   { to: '/dashboard/verktyg', icon: Wrench, label: 'Verktyg' },
   { to: '/dashboard/utveckling', icon: BookOpen, label: 'Min utveckling' },
 ]

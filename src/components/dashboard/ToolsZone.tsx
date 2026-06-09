@@ -39,32 +39,6 @@ const TOOLS: ToolDefinition[] = [
     requiredTrust: 'bankid',
     badge: 'Ny',
   },
-  {
-    id: 'readiness-check',
-    name: 'Readiness Check',
-    description: 'Utvärdera din strategiska mognad innan bolagsbildning',
-    icon: 'CheckSquare',
-    price: 'Gratis',
-    route: '/dashboard/verktyg/readiness-check',
-    requiredTrust: 'bankid',
-  },
-  {
-    id: 'checklists',
-    name: 'Checklistor & Mallar',
-    description: 'Kommenterade mallar för styrelsearbete, avtal och mer',
-    icon: 'ClipboardList',
-    route: '/dashboard/verktyg/checklistor',
-    requiredTrust: 'org_nr',
-  },
-  {
-    id: 'legal-source-genie',
-    name: 'Legal Source Genie',
-    description: 'AI-driven juridisk research — hitta rätt rättskällor snabbt',
-    icon: 'Sparkles',
-    price: 'Kommer snart',
-    requiredTrust: 'bankid',
-    comingSoon: true,
-  },
 ]
 
 export function ToolsZone() {
@@ -105,37 +79,6 @@ export function ToolsZone() {
             onPurchase={handlePurchase}
           />
         ))}
-      </div>
-
-      <div className="bg-[#F5F5F0] rounded-lg p-6">
-        <h3 className="font-semibold text-[#0E3047] mb-2">Vill du vara först med Legal Source Genie?</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          AI-driven juridisk research, anpassad för svenska rättskällor.
-          Lämna din e-post så meddelar vi dig vid lansering.
-        </p>
-        <form
-          className="flex gap-3"
-          onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
-            e.preventDefault()
-            const input = (e.target as HTMLFormElement).elements.namedItem('email') as HTMLInputElement
-            alert(`Tack! Vi meddelar ${input.value} vid lansering.`)
-            input.value = ''
-          }}
-        >
-          <input
-            type="email"
-            name="email"
-            placeholder="din@email.se"
-            required
-            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E3047]/20"
-          />
-          <button
-            type="submit"
-            className="bg-[#0E3047] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#1A4060] transition-colors"
-          >
-            Bevaka
-          </button>
-        </form>
       </div>
 
       <UpgradeModal
