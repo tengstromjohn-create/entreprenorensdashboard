@@ -1,4 +1,5 @@
-import { BookOpen, Video, Users, Calendar, Lock, ArrowRight, ExternalLink } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { BookOpen, Video, Users, Calendar, Lock, ArrowRight } from 'lucide-react'
 
 const PREVIEW_ARTICLES = [
   { title: 'Aktiebolag eller enskild firma — vad passar dig?', tag: 'Starta' },
@@ -13,6 +14,7 @@ const NEXT_SESSION = {
 }
 
 export function DevelopmentZone() {
+  const navigate = useNavigate()
   return (
     <div className="space-y-6">
       <div>
@@ -79,19 +81,20 @@ export function DevelopmentZone() {
           och ett community av ambitiösa entreprenörer.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button className="bg-white text-[#0E3047] px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center justify-center gap-2">
+          <button
+            onClick={() => navigate('/dashboard/utveckling/plattformen')}
+            className="bg-white text-[#0E3047] px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+          >
             Bli medlem — 499 kr/mån
             <ArrowRight size={16} />
           </button>
-          <a
-            href="https://johntengstrom.se/plattformen"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => navigate('/dashboard/utveckling/plattformen')}
             className="border border-white/30 text-white px-6 py-3 rounded-lg font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
           >
             Läs mer
-            <ExternalLink size={14} />
-          </a>
+            <ArrowRight size={14} />
+          </button>
         </div>
       </div>
 
@@ -100,14 +103,12 @@ export function DevelopmentZone() {
         <p className="text-xs text-gray-500 mb-3">
           Peer group-sessioner, 1:1-samtal med John och prioriterad support.
         </p>
-        <a
-          href="https://johntengstrom.se/inre-kretsen"
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={() => navigate('/dashboard/utveckling/inre-kretsen')}
           className="text-sm text-[#0E3047] font-medium hover:underline"
         >
           Läs mer om Inre Kretsen &rarr;
-        </a>
+        </button>
       </div>
     </div>
   )

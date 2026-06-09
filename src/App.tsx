@@ -12,6 +12,7 @@ import { SettingsPage } from '@/components/dashboard/SettingsPage'
 import { StartupKit } from '@/pages/StartupKit'
 import { HealthCheck } from '@/pages/HealthCheck'
 import { ContractEngine } from '@/pages/ContractEngine'
+import { PlatformPage, InnerCirclePage } from '@/pages/Membership'
 import { Admin } from '@/pages/Admin'
 
 function RootRedirect() {
@@ -57,6 +58,8 @@ function App() {
           <Route path="verktyg/health-check" element={<HealthCheck />} />
           <Route path="verktyg/avtal" element={<ContractEngine />} />
           <Route path="utveckling" element={<DevelopmentZone />} />
+          <Route path="utveckling/plattformen" element={<PlatformPage />} />
+          <Route path="utveckling/inre-kretsen" element={<InnerCirclePage />} />
           <Route path="installningar" element={<SettingsPage />} />
         </Route>
         <Route
