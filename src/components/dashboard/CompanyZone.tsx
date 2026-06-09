@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanyData } from '@/hooks/useCompanyData'
 import { CompanyCard } from '@/components/shared/CompanyCard'
-import { TrustBadge } from '@/components/shared/TrustBadge'
 import { hasTrustLevel } from '@/types/dashboard'
 import { Users, ArrowRight, Rocket, Search, FileSignature, Loader2, AlertCircle, Building2, ChevronDown, GraduationCap } from 'lucide-react'
 
@@ -65,18 +64,16 @@ export function CompanyZone() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#0E3047]">Dina bolag</h1>
-        <TrustBadge level={trustLevel} size="sm" />
-      </div>
-
+    <div className="space-y-5">
       {/* PRIMÄR VY: Dina bolag (engagemang från BankID-inloggning) */}
       {hasEngagements && (
         <div className="space-y-3">
-          <p className="text-sm text-[#4B6680]">
-            Bolag du företräder enligt Bolagsverket. Välj ett bolag för att se firmateckning, styrelse och bolagsinformation.
-          </p>
+          <div>
+            <h2 className="font-semibold text-[#0E3047]">Dina bolag</h2>
+            <p className="text-sm text-[#4B6680] mt-0.5">
+              Bolag du företräder enligt Bolagsverket. Välj ett för att se detaljerna.
+            </p>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {engagements.map((eng) => {
               const isSelected = selectedOrg === eng.orgNumber
@@ -119,28 +116,35 @@ export function CompanyZone() {
 
       {/* EMPTY STATE: BankID-användare utan engagemang */}
       {!hasEngagements && hasTrustLevel(trustLevel, 'bankid') && !companyData && !loading && (
-        <div className="bg-[#F5F5F0] rounded-lg p-8 text-center">
-          <Rocket size={40} className="text-gray-400 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-[#0E3047] mb-2">Du företräder inget aktivt bolag</h2>
-          <p className="text-sm text-[#4B6680] mb-6 max-w-md mx-auto">
-            Vi hittade inga bolagsuppdrag kopplade till dig hos Bolagsverket. Vill du starta ett bolag?
-            Startup Kit hjälper dig hela vägen — med rätt dokument och en 90-dagarsplan.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              onClick={() => navigate('/dashboard/verktyg')}
-              className="bg-[#B5453B] text-[#FAF6EE] px-6 py-3 rounded-lg font-medium hover:bg-[#9E3B32] transition-colors inline-flex items-center gap-2"
-            >
-              <Rocket size={16} />
-              Utforska Startup Kit
-            </button>
-            <button
-              onClick={() => navigate('/dashboard/verktyg')}
-              className="bg-white text-[#0E3047] border border-[#E8E4DE] px-6 py-3 rounded-lg font-medium hover:border-[#0E3047]/40 transition-colors inline-flex items-center gap-2"
-            >
-              <GraduationCap size={16} />
-              Se utbildningar
-            </button>
+        <div className="bg-white rounded-xl border border-[#E8E4DE] p-6 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#B5453B]" />
+          <div className="flex items-start gap-4 pl-2">
+            <div className="bg-[#B5453B]/10 rounded-lg p-2.5 shrink-0">
+              <Rocket size={20} className="text-[#B5453B]" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-[#0E3047] mb-1">Du företräder inget aktivt bolag</h3>
+              <p className="text-sm text-[#4B6680] mb-4">
+                Vi hittade inga bolagsuppdrag kopplade till dig hos Bolagsverket. Vill du starta ett bolag?
+                Startup Kit guidar dig hela vägen.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => navigate('/dashboard/verktyg/startup-kit')}
+                  className="bg-[#B5453B] text-[#FAF6EE] px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#9E3B32] transition-colors inline-flex items-center gap-2"
+                >
+                  <Rocket size={15} />
+                  Utforska Startup Kit
+                </button>
+                <button
+                  onClick={() => navigate('/dashboard/utveckling')}
+                  className="bg-white text-[#0E3047] border border-[#E8E4DE] px-4 py-2.5 rounded-lg text-sm font-medium hover:border-[#0E3047]/40 transition-colors inline-flex items-center gap-2"
+                >
+                  <GraduationCap size={15} />
+                  Se utbildningar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -266,20 +270,27 @@ export function CompanyZone() {
 
       {/* Empty state för icke-BankID utan bolagsdata (org_nr-spår) */}
       {!hasEngagements && !hasTrustLevel(trustLevel, 'bankid') && !companyData && !loading && !searchTouched && (
-        <div className="bg-[#F5F5F0] rounded-lg p-8 text-center">
-          <Rocket size={40} className="text-gray-400 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-[#0E3047] mb-2">Logga in med BankID för att se dina bolag</h2>
-          <p className="text-sm text-[#4B6680] mb-6 max-w-md mx-auto">
-            Med BankID hämtar vi automatiskt de bolag du företräder. Du kan även slå upp ett valfritt
-            bolag via organisationsnummer ovan.
-          </p>
-          <button
-            onClick={() => navigate('/dashboard/verktyg')}
-            className="bg-[#0E3047] text-[#FAF6EE] px-6 py-3 rounded-lg font-medium hover:bg-[#1A4060] transition-colors inline-flex items-center gap-2"
-          >
-            Utforska Startup Kit
-            <ArrowRight size={16} />
-          </button>
+        <div className="bg-white rounded-xl border border-[#E8E4DE] p-6 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0E3047]" />
+          <div className="flex items-start gap-4 pl-2">
+            <div className="bg-[#0E3047]/8 rounded-lg p-2.5 shrink-0">
+              <Building2 size={20} className="text-[#0E3047]" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-[#0E3047] mb-1">Logga in med BankID för att se dina bolag</h3>
+              <p className="text-sm text-[#4B6680] mb-4">
+                Med BankID hämtar vi automatiskt de bolag du företräder. Du kan även slå upp ett valfritt
+                bolag via organisationsnummer nedan.
+              </p>
+              <button
+                onClick={() => navigate('/dashboard/verktyg/startup-kit')}
+                className="bg-[#0E3047] text-[#FAF6EE] px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#1A4060] transition-colors inline-flex items-center gap-2"
+              >
+                Utforska Startup Kit
+                <ArrowRight size={15} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
