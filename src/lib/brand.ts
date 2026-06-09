@@ -3,5 +3,5 @@
  * Arbetsnamn 2026-06-08: "Styrhytten" (maritim metafor — härifrån styr du bolaget).
  * Alternativ som diskuterats: Bolagsöversikt, Fundamentet, Kontrollrummet.
  */
-export const HUB_NAME = 'Styrhytten'
-export const HUB_TAGLINE = 'Härifrån överblickar och styr du ditt bolag'
+export const HUB_NAME = 'Mitt bolag'
+export const HUB_TAGLINE = 'Överblick och kontroll över ditt bolag'
