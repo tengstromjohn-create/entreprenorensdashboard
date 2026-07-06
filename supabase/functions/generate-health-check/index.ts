@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders, handleCors } from '../_shared/cors.ts'
 import { getAdminClient } from '../_shared/supabase-admin.ts'
+import { generateWithGemini } from '../_shared/llm.ts'
 
 /**
  * Corporate Health Check (reviderad bedömningsmall 2026-06-08).
@@ -136,9 +137,8 @@ serve(async (req) => {
     }
 
     const admin = getAdminClient()
-    const geminiKey = Deno.env.get('GEMINI_API_KEY')
 
-    if (!geminiKey) {
+    if (!Deno.env.get('GEMINI_API_KEY')) {
       return new Response(
         JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -160,36 +160,19 @@ serve(async (req) => {
       .replace('{{survey_readable}}', buildReadable(surveyReadable, surveyAnswers))
       .replace('{{trust_level}}', resolvedTrustLevel)
 
-    const callGemini = async () => {
-      const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
-            generationConfig: {
-              temperature: 0.3,
-              // Gemini 2.5 Flash: thinking-tokens räknas in i maxOutputTokens och trunkerade
-              // tidigare JSON:en ("Unterminated string"). Stäng av thinking + höj taket.
-              maxOutputTokens: 16384,
-              thinkingConfig: { thinkingBudget: 0 },
-              responseMimeType: 'application/json',
-            },
-          }),
-        }
-      )
-      if (!resp.ok) {
-        throw new Error(`Gemini API error: ${resp.status}`)
-      }
-      const data = await resp.json()
-      return data.candidates?.[0]?.content?.parts?.[0]?.text
-    }
+    const callGemini = () => generateWithGemini(systemPrompt, {
+      temperature: 0.3,
+      // Gemini 2.5 Flash: thinking-tokens räknas in i maxOutputTokens och trunkerade
+      // tidigare JSON:en ("Unterminated string"). Stäng av thinking + höj taket.
+      maxOutputTokens: 16384,
+      thinkingBudget: 0,
+      responseMimeType: 'application/json',
+    })
 
     let analysis: Record<string, unknown>
     try {
       const result = await callGemini()
-      const parsed = JSON.parse(result || '{}')
+      const parsed = JSON.parse(result.text || '{}')
       if (!parsed.areas || !Array.isArray(parsed.areas)) {
         throw new Error('Invalid response structure: missing areas array')
       }
@@ -198,7 +181,7 @@ serve(async (req) => {
       console.error('Health check first attempt failed:', firstError)
       try {
         const retry = await callGemini()
-        const parsed = JSON.parse(retry || '{}')
+        const parsed = JSON.parse(retry.text || '{}')
         if (!parsed.areas) throw new Error('Invalid retry structure')
         analysis = parsed
       } catch (retryError) {

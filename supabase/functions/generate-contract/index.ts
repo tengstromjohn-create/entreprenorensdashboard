@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders, handleCors } from '../_shared/cors.ts'
 import { getAdminClient } from '../_shared/supabase-admin.ts'
 import { runQAPipeline, getFlaggedUserResponse } from '../_shared/qa-pipeline.ts'
+import { generateWithGemini, GENERATION_MODEL } from '../_shared/llm.ts'
 import { buildPrompt } from './prompts.ts'
 
 /**
@@ -61,8 +62,7 @@ serve(async (req) => {
       )
     }
 
-    const geminiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!geminiKey) {
+    if (!Deno.env.get('GEMINI_API_KEY')) {
       return new Response(
         JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -73,35 +73,14 @@ serve(async (req) => {
     const prompt = buildPrompt(contractType, sanitizeObject(formAnswers), companyData ?? {})
     const genStart = Date.now()
 
-    const callGemini = async () => {
-      const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.2, // lägre än health check — juridisk text ska vara förutsägbar
-              // Thinking av + högre tak: tanke-tokens räknas in i maxOutputTokens och
-              // trunkerade health check-JSON:en. Samma skydd här.
-              maxOutputTokens: 16384,
-              thinkingConfig: { thinkingBudget: 0 },
-              responseMimeType: 'application/json',
-            },
-          }),
-        }
-      )
-      if (!resp.ok) {
-        throw new Error(`Gemini API error: ${resp.status}`)
-      }
-      const data = await resp.json()
-      return {
-        text: data.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined,
-        tokensIn: data.usageMetadata?.promptTokenCount as number | undefined,
-        tokensOut: data.usageMetadata?.candidatesTokenCount as number | undefined,
-      }
-    }
+    const callGemini = () => generateWithGemini(prompt, {
+      temperature: 0.2, // lägre än health check — juridisk text ska vara förutsägbar
+      // Thinking av + högre tak: tanke-tokens räknas in i maxOutputTokens och
+      // trunkerade health check-JSON:en. Samma skydd här.
+      maxOutputTokens: 16384,
+      thinkingBudget: 0,
+      responseMimeType: 'application/json',
+    })
 
     // Generera med en retry (samma mönster som generate-health-check)
     let contract: Record<string, unknown>
@@ -138,7 +117,7 @@ serve(async (req) => {
       userId: userId || undefined,
       geminiOutput: contract,
       geminiMeta: {
-        model: 'gemini-2.5-flash',
+        model: GENERATION_MODEL,
         tokensIn,
         tokensOut,
         latencyMs: genLatencyMs,
@@ -168,7 +147,7 @@ serve(async (req) => {
         status: qa.wasAutoDelivered ? 'generated' : 'flagged',
         qa_review_id: qa.qaReviewId,
         qa_status: qa.qaStatus,
-        gemini_model: 'gemini-2.5-flash',
+        gemini_model: GENERATION_MODEL,
         generation_latency_ms: genLatencyMs,
       })
       .select('id')
