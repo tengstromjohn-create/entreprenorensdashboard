@@ -4,7 +4,7 @@ import { qaWithClaude, QA_MODEL } from './llm.ts'
 // ============================================================
 // CLAUDE QA SYSTEMPROMPT
 // ============================================================
-const CLAUDE_QA_SYSTEM_PROMPT = `Du är kvalitetsgranskare för Entreprenörens Dashboard (app.johntengstrom.se).
+const CLAUDE_QA_SYSTEM_PROMPT = `Du är kvalitetsgranskare för Entreprenörens Dashboard (grundat.ai).
 
 Din uppgift är att granska AI-genererade rapporter innan de levereras till användare.
 Rapporterna genereras av Gemini och handlar om svensk bolagsjuridik och entreprenörskap.
