@@ -1,8 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders, handleCors } from '../_shared/cors.ts'
+import { callRoaring, formatPersonName, getRoaringCredentials, getRoaringToken } from '../_shared/roaring.ts'
 
 /**
- * Roaring OAuth client_credentials flow.
+ * Roaring OAuth client_credentials flow — nu via delade _shared/roaring.ts (S28-3).
  *
  * Sätt som Supabase secrets (INTE Vercel VITE_-vars — secret stannar server-side):
  *   ROARING_CLIENT_ID
@@ -13,55 +14,6 @@ import { corsHeaders, handleCors } from '../_shared/cors.ts'
  *
  * Spurt A (2026-06-04): overview + board members + signing combinations parallellt.
  */
-
-// In-memory token-cache (lever så länge edge function-instansen lever, vilket är minutsbar i Supabase)
-let cachedToken: { value: string; expiresAt: number } | null = null
-
-async function getRoaringToken(clientId: string, clientSecret: string): Promise<string> {
-  const now = Date.now()
-  if (cachedToken && cachedToken.expiresAt > now + 30_000) {
-    return cachedToken.value
-  }
-
-  const basic = btoa(`${clientId}:${clientSecret}`)
-  const response = await fetch('https://api.roaring.io/token', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${basic}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  })
-
-  if (!response.ok) {
-    throw new Error(`Roaring OAuth token error: ${response.status} ${await response.text()}`)
-  }
-
-  const data = await response.json()
-  cachedToken = {
-    value: data.access_token,
-    expiresAt: now + (data.expires_in * 1000) - 60_000, // marginal 60s
-  }
-  return data.access_token
-}
-
-async function callRoaring<T>(token: string, path: string): Promise<{ ok: boolean; status: number; data?: T; error?: string }> {
-  try {
-    const response = await fetch(`https://api.roaring.io${path}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    })
-    if (!response.ok) {
-      const text = await response.text()
-      return { ok: false, status: response.status, error: text }
-    }
-    return { ok: true, status: response.status, data: await response.json() as T }
-  } catch (err) {
-    return { ok: false, status: 0, error: err instanceof Error ? err.message : String(err) }
-  }
-}
 
 // Klassificera firmateckning till strukturerad regel för avtalsmotorn.
 // OBS: Roaring returnerar klausulen UTAN mellanslag ("...tvåiförening...") — matcha därför
@@ -74,13 +26,6 @@ function classifySignatory(rawDescription?: string): 'individually' | 'jointly_t
   if (t.includes('treiförening')) return 'jointly_three'
   if (t.includes('iförening') && (t.includes('alla') || t.includes('samtliga'))) return 'jointly_all'
   return 'other'
-}
-
-// Roaring namnformat: "Efternamn, Förnamn Mellannamn" -> "Förnamn Mellannamn Efternamn"
-function formatPersonName(raw?: string): string {
-  if (!raw) return ''
-  const [last, first] = raw.split(',').map((s) => s.trim())
-  return first ? `${first} ${last}` : last
 }
 
 serve(async (req) => {
@@ -107,11 +52,10 @@ serve(async (req) => {
     }
 
     const formatted = `${cleaned.substring(0, 6)}-${cleaned.substring(6)}`
-    const clientId = Deno.env.get('ROARING_CLIENT_ID')
-    const clientSecret = Deno.env.get('ROARING_CLIENT_SECRET')
+    const credentials = getRoaringCredentials()
 
     // Fallback: rikare mock-data när credentials saknas
-    if (!clientId || !clientSecret) {
+    if (!credentials) {
       return new Response(
         JSON.stringify({
           orgNumber: cleaned,
@@ -145,8 +89,8 @@ serve(async (req) => {
       )
     }
 
-    // OAuth-token (cached)
-    const token = await getRoaringToken(clientId, clientSecret)
+    // OAuth-token (cached — delas nu med get-my-companies via _shared/roaring.ts)
+    const token = await getRoaringToken(credentials.clientId, credentials.clientSecret)
 
     // Parallella API-anrop mot verifierade Roaring-endpoints (alla v2.0):
     //   overview             — företagsdata (records[0])
