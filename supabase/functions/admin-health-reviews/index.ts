@@ -39,8 +39,7 @@ serve(async (req) => {
         .order('created_at', { ascending: false })
         .limit(50)
       if (error) throw error
-      // deno-lint-ignore no-explicit-any
-      const items = (data ?? []).map((r: any) => ({
+      const items = (data ?? []).map((r) => ({
         id: r.id,
         created_at: r.created_at,
         org_number: r.org_number,

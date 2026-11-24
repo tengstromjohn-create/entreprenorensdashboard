@@ -219,6 +219,7 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   // Handle OIDC auth (BankID) — sync OIDC user to local state
   useEffect(() => {
     if (oidcAuth.isAuthenticated && oidcAuth.user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Behåll ordningen mellan OIDC-state, Supabase-session och BankID-hydrering.
       setTrustLevel('bankid')
       setIsLoading(false)
 
@@ -323,7 +324,7 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function useAppAuth() {
+function useAppAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
     throw new Error('useAppAuth must be used within an AuthContextProvider')
@@ -331,5 +332,5 @@ export function useAppAuth() {
   return context
 }
 
-// Alias for cleaner imports in new components
-export const useAuth = useAppAuth
+// eslint-disable-next-line react-refresh/only-export-components -- Behåll befintliga hook-importer från samma modul som providern.
+export { useAppAuth, useAppAuth as useAuth }

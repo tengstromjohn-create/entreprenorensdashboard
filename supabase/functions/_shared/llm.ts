@@ -42,8 +42,12 @@ export async function generateWithGemini(
     throw new Error('GEMINI_API_KEY not configured')
   }
 
-  // deno-lint-ignore no-explicit-any
-  const generationConfig: Record<string, any> = {}
+  const generationConfig: {
+    temperature?: number
+    maxOutputTokens?: number
+    thinkingConfig?: { thinkingBudget: number }
+    responseMimeType?: string
+  } = {}
   if (config?.temperature !== undefined) generationConfig.temperature = config.temperature
   if (config?.maxOutputTokens !== undefined) generationConfig.maxOutputTokens = config.maxOutputTokens
   if (config?.thinkingBudget !== undefined) generationConfig.thinkingConfig = { thinkingBudget: config.thinkingBudget }
