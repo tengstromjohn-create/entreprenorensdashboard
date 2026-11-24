@@ -108,9 +108,11 @@ function isQaIssue(value: unknown): value is { category: string } {
 }
 
 function parseQaVerdict(text: string | undefined, sourceType: PipelineInput['sourceType']) {
+  const response = text?.trim() ?? ''
+  const fencedJson = response.match(/^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```$/i)
   let result: unknown
   try {
-    result = JSON.parse(text ?? '')
+    result = JSON.parse(fencedJson?.[1] ?? response)
   } catch {
     throw new Error('Claude QA returned invalid JSON')
   }
@@ -142,6 +144,8 @@ function parseQaVerdict(text: string | undefined, sourceType: PipelineInput['sou
 }
 
 const QA_CLIENT_ERROR = 'Kvalitetskontrollen misslyckades. Dokumentet kunde inte levereras. Försök igen senare.'
+// Avtalsgeneratorn kan skriva 16 384 token. En korrigering behöver även rymma QA-svarets JSON och granskningsanmärkningar.
+const CONTRACT_QA_MAX_TOKENS = 32_768
 
 export async function runQAPipeline(input: PipelineInput): Promise<PipelineResult> {
   const admin = getAdminClient()
@@ -184,7 +188,11 @@ export async function runQAPipeline(input: PipelineInput): Promise<PipelineResul
   // Steg 2: Claude QA
   try {
     const userContent = `Granska denna ${input.sourceType === 'health_check' ? 'Corporate Health Check-rapport' : input.sourceType === 'contract' ? 'avtalsgenerering (granska content_markdown som juridiskt dokument: korrekta lagrum, inga påhittade uppgifter utanför klamrar, tvingande arbetsrätt respekterad)' : 'Startup Kit-rapport'}:\n\n${JSON.stringify(input.geminiOutput, null, 2)}`
-    const qa = await qaWithClaude(CLAUDE_QA_SYSTEM_PROMPT, userContent)
+    const qa = await qaWithClaude(
+      CLAUDE_QA_SYSTEM_PROMPT,
+      userContent,
+      input.sourceType === 'contract' ? CONTRACT_QA_MAX_TOKENS : undefined,
+    )
     const qaVerdict = parseQaVerdict(qa.text, input.sourceType)
     const qaStatus = { approve: 'approved', correct: 'corrected', flag: 'flagged' }[qaVerdict.verdict]
     const finalOutput = qaVerdict.correctedOutput ?? input.geminiOutput

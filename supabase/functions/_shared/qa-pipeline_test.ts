@@ -1,5 +1,17 @@
 import assert from 'node:assert/strict'
-import { runQAPipeline } from './qa-pipeline.ts'
+
+// llm.ts läser modellförvalet vid import. Ladda pipelinen med en kontrollerad miljö.
+async function loadPipelineWithDefaultModel() {
+  const envGet = Deno.env.get
+  Deno.env.get = (name) => name === 'QA_MODEL' ? undefined : envGet(name)
+  try {
+    return await import('./qa-pipeline.ts')
+  } finally {
+    Deno.env.get = envGet
+  }
+}
+
+const { runQAPipeline } = await loadPipelineWithDefaultModel()
 
 const input = {
   sourceType: 'contract',
@@ -22,7 +34,7 @@ const clientError = /^Error: Kvalitetskontrollen misslyckades\. Dokumentet kunde
 
 function claudeResponse(
   verdict: unknown = approved,
-  { text = JSON.stringify(verdict), stopReason = 'end_turn' } = {},
+  { text = JSON.stringify(verdict), stopReason = 'end_turn', outputTokens = 5 } = {},
 ) {
   return Response.json({
     content: [
@@ -30,12 +42,17 @@ function claudeResponse(
       { type: 'text', text },
     ],
     stop_reason: stopReason,
-    usage: { input_tokens: 12, output_tokens: 5 },
+    usage: { input_tokens: 12, output_tokens: outputTokens },
   })
 }
 
 async function withMockQa(
-  options: { keyMissing?: boolean; respond?: () => Response; rejectStatus?: string },
+  options: {
+    keyMissing?: boolean
+    modelOverride?: string
+    respond?: (request: Record<string, unknown>) => Response
+    rejectStatus?: string
+  },
   test: (state: {
     writes: Record<string, unknown>[]
     qaRequests: Record<string, unknown>[]
@@ -52,6 +69,7 @@ async function withMockQa(
   Deno.env.get = (name) => {
     switch (name) {
       case 'ANTHROPIC_API_KEY': return options.keyMissing ? undefined : 'fake-anthropic-key'
+      case 'QA_MODEL': return options.modelOverride
       case 'SUPABASE_URL': return 'https://supabase.example'
       case 'SUPABASE_SERVICE_ROLE_KEY': return 'fake-service-role-key'
       default: return envGet(name)
@@ -64,8 +82,9 @@ async function withMockQa(
     const request = new Request(resource, init)
     const url = new URL(request.url)
     if (request.url === qaUrl && request.method === 'POST') {
-      qaRequests.push(await request.json())
-      return options.respond ? options.respond() : claudeResponse()
+      const body = await request.json()
+      qaRequests.push(body)
+      return options.respond ? options.respond(body) : claudeResponse()
     }
 
     assert.equal(`${url.origin}${url.pathname}`, reviewUrl)
@@ -110,6 +129,17 @@ Deno.test('Godkänt QA levererar avtalet efter loggad granskning och använder m
   })
 })
 
+Deno.test('En explicit QA_MODEL används i Anthropic-anropet', async () => {
+  const modelOverride = 'qa-model-fixture'
+  await withMockQa({ modelOverride }, async ({ qaRequests }) => {
+    // En separat modulinstans testar konfigurationen vid uppstart.
+    const { qaWithClaude } = await import('./llm.ts?qa-model-override')
+    await qaWithClaude('Syntetiska instruktioner.', 'Syntetiskt underlag.')
+    assert.equal(qaRequests.length, 1)
+    assert.equal(qaRequests[0].model, modelOverride)
+  })
+})
+
 Deno.test('Giltig korrigering levereras och flaggning går till manuell granskning', async () => {
   const corrected = { title: 'Granskat testavtal', content_markdown: 'Korrigerad text.' }
   await withMockQa({ respond: () => claudeResponse({ ...approved, verdict: 'correct', corrected_output: corrected }) }, async ({ writes }) => {
@@ -128,11 +158,47 @@ Deno.test('Giltig korrigering levereras och flaggning går till manuell granskni
   })
 })
 
+Deno.test('En fullständig avtalskorrigering ryms inom QA-anropets utökade tokentak', async () => {
+  const corrected = {
+    title: 'Granskat testavtal',
+    content_markdown: 'Det här är en syntetisk, korrigerad avtalsbestämmelse.\n'.repeat(1_200),
+  }
+  const outputTokens = 16_500
+  await withMockQa({
+    respond: ({ max_tokens }) => {
+      if (typeof max_tokens !== 'number' || max_tokens < outputTokens) {
+        return claudeResponse(approved, { text: '{', stopReason: 'max_tokens' })
+      }
+      return claudeResponse({ ...approved, verdict: 'correct', corrected_output: corrected }, { outputTokens })
+    },
+  }, async ({ writes, qaRequests }) => {
+    const result = await runQAPipeline(input)
+    assert.equal(qaRequests[0].max_tokens, 32_768)
+    assert.equal(result.qaStatus, 'corrected')
+    assert.equal(result.wasAutoDelivered, true)
+    assert.deepEqual(result.finalOutput, corrected)
+    assert.deepEqual(writes.map((entry) => entry.qa_status), ['pending', 'corrected'])
+    assert.equal(writes[1].qa_tokens_out, outputTokens)
+    assert.equal(typeof writes[1].delivered_at, 'string')
+  })
+})
+
+Deno.test('Ett giltigt QA-svar i ett JSON-kodblock godkänns', async () => {
+  const text = ` \n\`\`\`json\r\n${JSON.stringify(approved, null, 2)}\r\n\`\`\`\n `
+  await withMockQa({ respond: () => claudeResponse(approved, { text }) }, async ({ writes }) => {
+    const result = await runQAPipeline(input)
+    assert.equal(result.qaStatus, 'approved')
+    assert.equal(result.wasAutoDelivered, true)
+    assert.deepEqual(writes.map((entry) => entry.qa_status), ['pending', 'approved'])
+  })
+})
+
 const failedQaCases = [
   { name: 'Saknad nyckel', keyMissing: true, reason: 'ANTHROPIC_API_KEY not configured' },
   { name: 'API-fel', respond: () => new Response(null, { status: 503 }), reason: 'Claude API error: 503' },
   { name: 'Nätverksfel', respond: () => { throw new Error('Syntetiskt nätverksfel') }, reason: 'Claude API network error' },
   { name: 'Ogiltig JSON', respond: () => claudeResponse(approved, { text: 'syntetisk råtext' }), reason: 'Claude QA returned invalid JSON' },
+  { name: 'JSON-kodblock med omgivande text', respond: () => claudeResponse(approved, { text: `Inledning\n\`\`\`json\n${JSON.stringify(approved)}\n\`\`\`` }), reason: 'Claude QA returned invalid JSON' },
   { name: 'Ofullständigt svar', respond: () => claudeResponse(approved, { stopReason: 'max_tokens' }), reason: 'Claude QA did not return a complete response' },
   { name: 'Okänt beslut', respond: () => claudeResponse({ ...approved, verdict: 'unknown' }), reason: 'Invalid Claude QA verdict' },
   { name: 'Ofullständig granskning', respond: () => claudeResponse({ verdict: 'approve' }), reason: 'Invalid Claude QA verdict' },
@@ -187,4 +253,65 @@ Deno.test('Avvecklat QA-modell-ID saknas i Edge Functions', () => {
   }
 
   checkSources(new URL('../', import.meta.url))
+})
+
+// Avvecklingsdatum för Claude- och Gemini-modeller som är relevanta för textgenerering här.
+// https://platform.claude.com/docs/en/about-claude/model-deprecations
+// https://aistudio.google.com/docs/deprecations
+const modelRetirements: Record<string, string> = {
+  'claude-3-haiku-20240307': '2026-04-20',
+  'claude-3-opus-20240229': '2026-01-05',
+  'claude-3-sonnet-20240229': '2025-07-21',
+  'claude-3-5-haiku-20241022': '2026-02-19',
+  'claude-3-5-sonnet-20240620': '2025-10-28',
+  'claude-3-5-sonnet-20241022': '2025-10-28',
+  'claude-3-7-sonnet-20250219': '2026-02-19',
+  'claude-opus-4-20250514': '2026-06-15',
+  'claude-opus-4-1-20250805': '2026-08-05',
+  'claude-opus-4-5': '2027-01-22',
+  'claude-opus-4-5-20251101': '2027-01-22',
+  'claude-sonnet-4-5': '2026-11-30',
+  'claude-sonnet-4-5-20250929': '2026-11-30',
+  [['claude-sonnet-4', '20250514'].join('-')]: '2026-06-15',
+  'gemini-2.0-flash': '2026-06-01',
+  'gemini-2.0-flash-001': '2026-06-01',
+  'gemini-2.0-flash-lite': '2026-06-01',
+  'gemini-2.0-flash-lite-001': '2026-06-01',
+  'gemini-2.5-flash': '2026-12-01',
+  'gemini-2.5-pro': '2026-12-01',
+}
+
+function retiredModelsIn(source: string, date: string): string[] {
+  const words = new Set(source.match(/[\w-]+(?:\.[\w-]+)*/g))
+  return Object.entries(modelRetirements)
+    .filter(([model, retiredOn]) => retiredOn <= date && words.has(model))
+    .map(([model]) => model)
+}
+
+Deno.test('Modellkontrollen skiljer datum och exakta modell-ID:n åt', () => {
+  const source = '"claude-opus-4-20250514" "models/gemini-2.5-flash" "gemini-2.5-flash-lite"'
+  assert.deepEqual(retiredModelsIn(source, '2026-11-30'), ['claude-opus-4-20250514'])
+  assert.deepEqual(retiredModelsIn(source, '2026-12-01'), ['claude-opus-4-20250514', 'gemini-2.5-flash'])
+})
+
+Deno.test('Edge Functions innehåller inga modell-ID:n vars avvecklingsdatum har passerat', () => {
+  const today = new Date().toISOString().slice(0, 10)
+  const root = new URL('../', import.meta.url)
+  const findings: string[] = []
+
+  function checkSources(directory: URL) {
+    for (const entry of Deno.readDirSync(directory)) {
+      const path = new URL(entry.name + (entry.isDirectory ? '/' : ''), directory)
+      if (entry.isDirectory) {
+        checkSources(path)
+      } else if (entry.isFile && path.href !== import.meta.url && /\.[cm]?[jt]sx?$/.test(entry.name)) {
+        for (const model of retiredModelsIn(Deno.readTextFileSync(path), today)) {
+          findings.push(`${path.pathname}: ${model} (avvecklad ${modelRetirements[model]})`)
+        }
+      }
+    }
+  }
+
+  checkSources(root)
+  assert.deepEqual(findings, [], `Avvecklade modell-ID:n:\n${findings.join('\n')}`)
 })
