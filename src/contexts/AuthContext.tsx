@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { useAuth as useOidcAuth } from 'react-oidc-context'
 import { toast } from 'sonner'
-import { requestBankIDLogin, signOutFromApp } from '@/lib/bankid-flow'
+import { requestBankIDLogin, signOutFromApp, type BankIDLoginProof } from '@/lib/bankid-flow'
 import { supabase } from '@/lib/supabase'
 import type { Session, User } from '@supabase/supabase-js'
 import type { CompanyData, EngagementData } from '@/types/dashboard'
@@ -46,7 +46,7 @@ interface AuthContextType {
   signInWithBankID: () => Promise<void>
   signInWithMagicLink: (email: string) => Promise<void>
   refreshProfile: () => Promise<void>
-  completeBankIDLogin: (idToken: string, accessToken: string) => Promise<void>
+  completeBankIDLogin: (proof: BankIDLoginProof) => Promise<void>
   /**
    * Aktivt bolag — det bolag användaren senast valt i "Dina bolag" (eller slagit upp).
    * Delas mellan Health Check, avtalsmotorn och andra verktyg och sparas i sessionStorage.
@@ -152,11 +152,11 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
     return () => controller.abort()
   }, [userId])
 
-  const completeBankIDLogin = useCallback(async (idToken: string, accessToken: string) => {
+  const completeBankIDLogin = useCallback(async (proof: BankIDLoginProof) => {
     const { data, error } = await supabase.functions.invoke<{ accessToken: string; refreshToken: string }>(
       'bankid-auth',
       {
-        body: { idToken, accessToken },
+        body: proof,
         headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
       },
     )

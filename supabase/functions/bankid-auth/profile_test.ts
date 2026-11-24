@@ -1,4 +1,5 @@
 import { deepStrictEqual, equal, match, rejects } from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { base64url } from 'npm:jose@6.2.16'
 import { fetchEngagementsSafe, readBankIDProfileDetails } from './profile.ts'
@@ -7,8 +8,15 @@ import { startBankIDSession } from './session.ts'
 const identity = { subject: 'test-subject', name: 'Testanvändare', personalNumber: '200001010000' }
 const issuer = 'https://signicat.example/auth/open'
 const sessionId = '10000000-0000-4000-8000-000000000002'
+const formattedNumber = '20000101-0000'
+const registryHash = createHash('sha256').update(identity.personalNumber).digest('hex')
 
-function profileFixture({ flagged = false, registryError = false, existingClient = false } = {}) {
+function profileFixture({
+  registryValue = '',
+  registryActive = true,
+  registryError = false,
+  existingClient = false,
+} = {}) {
   let account: { id: string; email: string; app_metadata: Record<string, unknown> } | undefined
   let persisted: Record<string, unknown> | undefined
   let links = 0
@@ -24,10 +32,13 @@ function profileFixture({ flagged = false, registryError = false, existingClient
       return Response.json(account)
     }
     if (method === 'GET' && pathname === '/rest/v1/conflict_check_registry') {
-      deepStrictEqual(Object.fromEntries(searchParams), {
-        select: 'id', personal_number: `eq.${identity.personalNumber}`, is_active: 'eq.true', limit: '1',
-      })
+      equal(searchParams.get('select'), 'id')
+      equal(searchParams.get('is_active'), 'eq.true')
+      equal(searchParams.get('limit'), '1')
+      const candidates = searchParams.get('personal_number')?.match(/^in\.\((.*)\)$/)?.[1].split(',')
+      deepStrictEqual(candidates, [identity.personalNumber, formattedNumber, registryHash])
       if (registryError) return Response.json({ message: 'register unavailable' }, { status: 500 })
+      const flagged = registryActive && registryValue && candidates.includes(registryValue)
       return Response.json(flagged ? [{ id: 'syntetisk-träff' }] : [])
     }
     if (!account) throw new Error('Verifierat konto saknas i testet')
@@ -67,7 +78,10 @@ function profileFixture({ flagged = false, registryError = false, existingClient
 
 Deno.test('BankID sparar träff eller klar jävsstatus och återställer profilfält på det verifierade kontot', async () => {
   for (const flagged of [true, false]) {
-    const { login, outcome } = profileFixture({ flagged, existingClient: flagged })
+    const { login, outcome } = profileFixture({
+      registryValue: flagged ? identity.personalNumber : undefined,
+      existingClient: flagged,
+    })
     const session = await login()
     const { persisted, links } = outcome()
     equal(persisted?.id, session.user.id)
@@ -78,6 +92,18 @@ Deno.test('BankID sparar träff eller klar jävsstatus och återställer profilf
     match(String(persisted?.personal_number_hash), /^[a-f0-9]{64}$/)
     equal(JSON.stringify(persisted).includes(identity.personalNumber), false)
     equal(links, 1)
+  }
+})
+
+Deno.test('BankID hittar aktiva jävsrader med bindestreck eller SHA-256 och ignorerar inaktiva', async () => {
+  for (const { registryValue, registryActive, expected } of [
+    { registryValue: formattedNumber, registryActive: true, expected: 'flagged' },
+    { registryValue: registryHash, registryActive: true, expected: 'flagged' },
+    { registryValue: registryHash, registryActive: false, expected: 'clear' },
+  ]) {
+    const { login, outcome } = profileFixture({ registryValue, registryActive })
+    await login()
+    equal(outcome().persisted?.conflict_check_result, expected)
   }
 })
 

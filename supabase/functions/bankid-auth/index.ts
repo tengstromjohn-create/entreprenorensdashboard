@@ -9,9 +9,9 @@ import { createSignicatVerifier } from './signicat.ts'
 const getIssuer = () => Deno.env.get('SIGNICAT_ISSUER') ?? ''
 let verifySignicat: ReturnType<typeof createSignicatVerifier> | undefined
 
-serve(createBankIDHandler((idToken, accessToken) => {
+serve(createBankIDHandler((proof) => {
   verifySignicat ??= createSignicatVerifier(getIssuer(), Deno.env.get('SIGNICAT_CLIENT_ID') ?? '')
-  return verifySignicat(idToken, accessToken)
+  return verifySignicat(proof)
 }, (identity) => {
   const admin = getAdminClient()
   const authClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {

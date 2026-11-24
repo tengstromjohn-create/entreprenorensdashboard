@@ -1,51 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth as useOidcAuth } from 'react-oidc-context';
 import { useAuth } from '@/contexts/AuthContext';
+import { bankIDOidcClient } from '@/lib/auth';
+import { readBankIDCallback } from '@/lib/bankid-flow';
 
 export function AuthCallback() {
-  const oidcAuth = useOidcAuth();
   const { completeBankIDLogin } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
-  // PKCE-callbacken kan rendera om flera gånger — kör hanteringen exakt en gång
   const handledRef = useRef(false);
 
   useEffect(() => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+
+    const url = window.location.href;
+    window.history.replaceState(window.history.state, '', window.location.pathname);
+
     const handleCallback = async () => {
       try {
-        // oidc-client-ts hanterar code/PKCE-utbytet automatiskt; här tar vi vid
-        // när användaren är autentiserad.
-
-        if (oidcAuth.error) {
-          setError(oidcAuth.error.message);
-          return;
-        }
-
-        if (oidcAuth.isAuthenticated && oidcAuth.user && !handledRef.current) {
-          handledRef.current = true;
-
-          const { id_token: idToken, access_token: accessToken } = oidcAuth.user;
-          if (!idToken || !accessToken) {
-            setError('BankID-svaret saknade inloggningsbevis.');
-            return;
-          }
-
-          await completeBankIDLogin(idToken, accessToken);
-
-          navigate('/dashboard', { replace: true });
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Autentiseringen misslyckades'
-        );
+        const proof = await readBankIDCallback(bankIDOidcClient, url);
+        await completeBankIDLogin(proof);
+        navigate('/dashboard', { replace: true });
+      } catch {
+        setError('BankID-inloggningen kunde inte slutföras. Starta en ny inloggning.');
       }
     };
 
-    if (!oidcAuth.isLoading) {
-      handleCallback();
-    }
-  }, [oidcAuth.isLoading, oidcAuth.isAuthenticated, oidcAuth.user, oidcAuth.error, navigate, completeBankIDLogin]);
+    void handleCallback();
+  }, [navigate, completeBankIDLogin]);
 
   if (error) {
     return (

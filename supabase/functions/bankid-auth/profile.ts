@@ -16,11 +16,17 @@ export async function readBankIDProfileDetails(
   userId: string,
   loadEngagements: (personalNumber: string) => Promise<EngagementData | null>,
 ): Promise<BankIDProfileDetails> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(personalNumber))
+  const personalNumberHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+  const formattedNumber = `${personalNumber.slice(0, -4)}-${personalNumber.slice(-4)}`
+
+  // Kolumnen saknar formatkrav. Sök på klartext med och utan bindestreck
+  // samt på samma SHA-256-format som check-conflict använder.
   const { data: conflicts, error: conflictError } = await admin
     .from('conflict_check_registry')
     .select('id')
     .eq('is_active', true)
-    .eq('personal_number', personalNumber)
+    .in('personal_number', [personalNumber, formattedNumber, personalNumberHash])
     .limit(1)
   if (conflictError || !conflicts) {
     console.error('[bankid-auth] Jävsregistret kunde inte kontrolleras')
@@ -35,8 +41,6 @@ export async function readBankIDProfileDetails(
     .maybeSingle()
   if (profileError) throw profileError
 
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(personalNumber))
-  const personalNumberHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
   const engagements = await loadEngagements(personalNumber)
 
   return {

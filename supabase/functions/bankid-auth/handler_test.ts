@@ -2,15 +2,18 @@ import { deepStrictEqual, equal, match } from 'node:assert/strict'
 import { createBankIDHandler } from './handler.ts'
 import { InvalidSignicatSession } from './signicat.ts'
 
-Deno.test('BankID-handlern kontrollerar metoden och tokenparet före sessionsutbyte', async () => {
+Deno.test('BankID-handlern kontrollerar metoden och PKCE-underlaget före sessionsutbyte', async () => {
   const url = 'https://edge.example/bankid-auth'
   const identity = { name: 'Testanvändare', personalNumber: '200001010000', subject: 'test-subject' }
   let verified = 0
   let exchanged = 0
-  const handle = createBankIDHandler(async (idToken, accessToken) => {
+  const codeVerifier = 'a'.repeat(43)
+  const redirectUri = 'https://app.example/callback'
+  const nonce = 'syntetisk-nonce'
+  const handle = createBankIDHandler(async ({ code, ...proof }) => {
     verified++
-    equal(accessToken, 'syntetisk-access-token')
-    if (idToken === 'ogiltigt-bevis') throw new InvalidSignicatSession('syntetisk intern feltext')
+    deepStrictEqual(proof, { codeVerifier, redirectUri, nonce })
+    if (code === 'ogiltigt-bevis') throw new InvalidSignicatSession('syntetisk intern feltext')
     return identity
   }, async (verifiedIdentity) => {
     deepStrictEqual(verifiedIdentity, identity)
@@ -19,8 +22,8 @@ Deno.test('BankID-handlern kontrollerar metoden och tokenparet före sessionsutb
     return { access_token: 'syntetisk-access', refresh_token: 'syntetisk-refresh' }
   })
 
-  function post(idToken: string) {
-    return new Request(url, { method: 'POST', body: JSON.stringify({ idToken, accessToken: 'syntetisk-access-token' }) })
+  function post(code: string) {
+    return new Request(url, { method: 'POST', body: JSON.stringify({ code, codeVerifier, redirectUri, nonce }) })
   }
 
   equal((await handle(new Request(url))).status, 405)
@@ -36,7 +39,7 @@ Deno.test('BankID-handlern kontrollerar metoden och tokenparet före sessionsutb
   equal(unavailable.status, 503)
   deepStrictEqual(await unavailable.json(), { error: 'BankID-inloggningen kunde inte slutföras. Försök igen.' })
 
-  const accepted = await handle(post('giltigt-bevis'))
+  const accepted = await handle(post('ny-giltig-kod'))
   equal(accepted.status, 200)
   match(accepted.headers.get('Cache-Control') ?? '', /^no-store$/)
   deepStrictEqual(await accepted.json(), { accessToken: 'syntetisk-access', refreshToken: 'syntetisk-refresh' })

@@ -1,5 +1,31 @@
-export function requestBankIDLogin(redirect: (options: { acr_values: string; prompt: string }) => Promise<void>) {
-  return redirect({ acr_values: 'idp:sbid', prompt: 'login' })
+import type { OidcClient } from 'oidc-client-ts'
+
+export function requestBankIDLogin(redirect: (options: {
+  acr_values: string
+  prompt: string
+  nonce: string
+  state: string
+}) => Promise<void>) {
+  const nonce = crypto.randomUUID()
+  return redirect({ acr_values: 'idp:sbid', prompt: 'login', nonce, state: nonce })
+}
+
+export interface BankIDLoginProof {
+  code: string
+  codeVerifier: string
+  redirectUri: string
+  nonce: string
+}
+
+export async function readBankIDCallback(oidc: OidcClient, url: string): Promise<BankIDLoginProof> {
+  const { response, state } = await oidc.readSigninResponseState(url, true)
+  if (response.error || !response.code || response.state !== state.id ||
+      state.authority !== oidc.settings.authority || state.client_id !== oidc.settings.client_id ||
+      state.redirect_uri !== oidc.settings.redirect_uri || !state.code_verifier ||
+      typeof state.data !== 'string' || !state.data) {
+    throw new Error('Ogiltigt BankID-svar.')
+  }
+  return { code: response.code, codeVerifier: state.code_verifier, redirectUri: state.redirect_uri, nonce: state.data }
 }
 
 export async function signOutFromApp(
