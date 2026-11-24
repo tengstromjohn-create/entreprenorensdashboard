@@ -38,7 +38,7 @@ serve(async (req) => {
       type: 'magiclink',
       email: email.toLowerCase(),
       options: {
-        redirectTo: `${Deno.env.get('SITE_URL') || 'https://app.johntengstrom.se'}/auth/callback`,
+        redirectTo: `${Deno.env.get('SITE_URL') || 'https://grundat.ai'}/auth/callback`,
       },
     })
 

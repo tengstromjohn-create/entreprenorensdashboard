@@ -1,9 +1,10 @@
 import { getAdminClient } from './supabase-admin.ts'
+import { qaWithClaude, QA_MODEL } from './llm.ts'
 
 // ============================================================
 // CLAUDE QA SYSTEMPROMPT
 // ============================================================
-const CLAUDE_QA_SYSTEM_PROMPT = `Du är kvalitetsgranskare för Entreprenörens Dashboard (app.johntengstrom.se).
+const CLAUDE_QA_SYSTEM_PROMPT = `Du är kvalitetsgranskare för Entreprenörens Dashboard (grundat.ai).
 
 Din uppgift är att granska AI-genererade rapporter innan de levereras till användare.
 Rapporterna genereras av Gemini och handlar om svensk bolagsjuridik och entreprenörskap.
@@ -140,31 +141,11 @@ export async function runQAPipeline(input: PipelineInput): Promise<PipelineResul
 
   // Steg 2: Claude QA
   try {
-    const qaResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        system: CLAUDE_QA_SYSTEM_PROMPT,
-        messages: [{
-          role: 'user',
-          content: `Granska denna ${input.sourceType === 'health_check' ? 'Corporate Health Check-rapport' : input.sourceType === 'contract' ? 'avtalsgenerering (granska content_markdown som juridiskt dokument: korrekta lagrum, inga påhittade uppgifter utanför klamrar, tvingande arbetsrätt respekterad)' : 'Startup Kit-rapport'}:\n\n${JSON.stringify(input.geminiOutput, null, 2)}`
-        }],
-      }),
-    })
-
-    if (!qaResponse.ok) {
-      throw new Error(`Claude API error: ${qaResponse.status}`)
-    }
-
-    const qaData = await qaResponse.json()
+    const userContent = `Granska denna ${input.sourceType === 'health_check' ? 'Corporate Health Check-rapport' : input.sourceType === 'contract' ? 'avtalsgenerering (granska content_markdown som juridiskt dokument: korrekta lagrum, inga påhittade uppgifter utanför klamrar, tvingande arbetsrätt respekterad)' : 'Startup Kit-rapport'}:\n\n${JSON.stringify(input.geminiOutput, null, 2)}`
+    const qa = await qaWithClaude(CLAUDE_QA_SYSTEM_PROMPT, userContent)
+    const qaData = qa.raw as { content?: { text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } }
     const qaLatencyMs = Date.now() - startTime
-    const qaText = qaData.content?.[0]?.text || '{}'
+    const qaText = qa.text || '{}'
     const qaVerdict = JSON.parse(qaText)
 
     // Bestäm status och output baserat på verdict
@@ -205,7 +186,7 @@ export async function runQAPipeline(input: PipelineInput): Promise<PipelineResul
         qa_verdict: qaVerdict,
         qa_issues: qaVerdict.issues || [],
         qa_confidence_score: qaVerdict.confidence || 0,
-        qa_model: 'claude-sonnet-4-20250514',
+        qa_model: QA_MODEL,
         qa_tokens_in: qaData.usage?.input_tokens || null,
         qa_tokens_out: qaData.usage?.output_tokens || null,
         qa_latency_ms: qaLatencyMs,

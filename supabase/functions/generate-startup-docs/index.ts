@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders, handleCors } from '../_shared/cors.ts'
 import { getAdminClient } from '../_shared/supabase-admin.ts'
+import { generateWithGemini } from '../_shared/llm.ts'
 
 const STARTUP_KIT_PROMPT = `Du är John Tengström, advokat och partner vid ASTRA ADVOKATER i Stockholm med 30 års erfarenhet som entreprenör, styrelseledamot, reservofficer och jurist.
 
@@ -156,9 +157,8 @@ serve(async (req) => {
     }
 
     const admin = getAdminClient()
-    const geminiKey = Deno.env.get('GEMINI_API_KEY')
 
-    if (!geminiKey) {
+    if (!Deno.env.get('GEMINI_API_KEY')) {
       return new Response(
         JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -180,37 +180,20 @@ serve(async (req) => {
       .replace('{{company_data}}', companyData ? JSON.stringify(companyData, null, 2) : 'Ej tillgängligt')
       .replace('{{track}}', verificationTrack)
 
-    const callGemini = async () => {
-      const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
-            generationConfig: {
-              temperature: 0.4,
-              maxOutputTokens: 8192,
-              responseMimeType: 'application/json',
-            },
-          }),
-        }
-      )
-      if (!resp.ok) {
-        throw new Error(`Gemini API error: ${resp.status}`)
-      }
-      const data = await resp.json()
-      return data.candidates?.[0]?.content?.parts?.[0]?.text
-    }
+    const callGemini = () => generateWithGemini(systemPrompt, {
+      temperature: 0.4,
+      maxOutputTokens: 8192,
+      responseMimeType: 'application/json',
+    })
 
     let report: Record<string, unknown>
     try {
       const result = await callGemini()
-      report = JSON.parse(result || '{}')
+      report = JSON.parse(result.text || '{}')
     } catch {
       const retry = await callGemini()
       try {
-        report = JSON.parse(retry || '{}')
+        report = JSON.parse(retry.text || '{}')
       } catch {
         // Uppdatera session till failed
         if (sessionId) {
