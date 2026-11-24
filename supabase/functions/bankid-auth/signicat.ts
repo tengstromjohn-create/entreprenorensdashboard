@@ -70,7 +70,8 @@ export async function verifySignicatSession(
     issuer,
     audience,
     algorithms: ['RS256'],
-    requiredClaims: ['sub', 'exp', 'iat', 'at_hash', 'idp'],
+    maxTokenAge: '5m',
+    requiredClaims: ['sub', 'exp', 'iat', 'idp'],
   }).catch((error: unknown) => {
     if (error instanceof errors.JOSEError && [
       'ERR_JWT_EXPIRED', 'ERR_JWT_CLAIM_VALIDATION_FAILED', 'ERR_JWT_INVALID',
@@ -85,15 +86,19 @@ export async function verifySignicatSession(
     throw new InvalidSignicatSession()
   }
 
-  // at_hash binder UserInfo-tokenen till det signerade BankID-svaret (RS256).
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(accessToken))
-  if (payload.at_hash !== base64url.encode(new Uint8Array(digest).subarray(0, 16))) {
-    throw new InvalidSignicatSession()
+  let info: Record<string, unknown> = payload
+  if (payload.at_hash !== undefined) {
+    // at_hash binder UserInfo-tokenen till det signerade BankID-svaret (RS256).
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(accessToken))
+    if (payload.at_hash !== base64url.encode(new Uint8Array(digest).subarray(0, 16))) {
+      throw new InvalidSignicatSession()
+    }
+
+    info = await getUserInfo(accessToken)
+    if (info.sub !== payload.sub) throw new InvalidSignicatSession()
   }
 
-  const info = await getUserInfo(accessToken)
-  if (info.sub !== payload.sub) throw new InvalidSignicatSession()
-
+  // at_hash är valfritt i code flow. Utan bindningen används bara signerade claims.
   const nin = info.nin ?? payload.nin
   const personalNumber = typeof nin === 'string' ? nin.replace(/[-\s]/g, '') : ''
   if (!/^(?:\d{10}|\d{12})$/.test(personalNumber)) throw new InvalidSignicatSession()

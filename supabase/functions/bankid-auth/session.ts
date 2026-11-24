@@ -1,7 +1,7 @@
 import { base64url } from 'npm:jose@6.2.16'
 import { getVerifiedSessionId } from '../_shared/bankid-session.ts'
 import type { getAdminClient } from '../_shared/supabase-admin.ts'
-import type { EngagementData } from '../_shared/roaring.ts'
+import type { BankIDProfileDetails } from './profile.ts'
 import type { BankIDIdentity } from './signicat.ts'
 
 type AdminClient = ReturnType<typeof getAdminClient>
@@ -26,7 +26,7 @@ export async function startBankIDSession(
   auth: Pick<AdminClient['auth'], 'verifyOtp'>,
   issuer: string,
   identity: BankIDIdentity,
-  fetchEngagements: (personalNumber: string) => Promise<EngagementData | null>,
+  getProfileDetails: (personalNumber: string, userId: string) => Promise<BankIDProfileDetails | null>,
 ) {
   const { id, key } = await accountKey(issuer, identity.subject)
   const { data: existing, error: lookupError } = await admin.auth.admin.getUserById(id)
@@ -56,12 +56,12 @@ export async function startBankIDSession(
     throw new Error('Supabase-kontot matchar inte verifierad BankID-identitet')
   }
 
-  const engagements = await fetchEngagements(identity.personalNumber)
+  const profileDetails = await getProfileDetails(identity.personalNumber, id)
   const { error: profileError } = await admin.from('user_profiles').upsert({
     id,
     display_name: identity.name,
     email: user.email,
-    ...(engagements && { engagements }),
+    ...profileDetails,
   })
   if (profileError) throw profileError
 

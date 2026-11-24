@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from 'react'
 import { useAuth as useOidcAuth } from 'react-oidc-context'
+import { toast } from 'sonner'
+import { requestBankIDLogin, signOutFromApp } from '@/lib/bankid-flow'
 import { supabase } from '@/lib/supabase'
 import type { Session, User } from '@supabase/supabase-js'
 import type { CompanyData, EngagementData } from '@/types/dashboard'
@@ -33,7 +35,9 @@ interface AuthContextType {
   user: User | null
   profile: UserProfile | null
   trustLevel: TrustLevel
-  hasBankIDSession: boolean
+  bankIDSessionId: string | null
+  bankIDSessionRejected: boolean
+  rejectBankIDSession: (sessionId: string) => void
   isAuthenticated: boolean
   isLoading: boolean
   signIn: (email: string, password: string) => Promise<void>
@@ -64,31 +68,34 @@ async function readProfile(userId: string, signal?: AbortSignal): Promise<UserPr
   return data as UserProfile | null
 }
 
-function hasBankIDVerification(session: Session | null): boolean {
+function getBankIDSessionId(session: Session | null): string | null {
   const verifiedSessionId: unknown = session?.user.app_metadata.bankid_session_id
-  if (typeof verifiedSessionId !== 'string' || !verifiedSessionId || !session) return false
+  if (typeof verifiedSessionId !== 'string' || !verifiedSessionId || !session) return null
   try {
     // Visningsstatus. Avtalsfunktionen verifierar tokenen och läser aktuell app_metadata hos Auth.
     const payload = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(atob(payload)).session_id === verifiedSessionId
+    return JSON.parse(atob(payload)).session_id === verifiedSessionId ? verifiedSessionId : null
   } catch {
-    return false
+    return null
   }
 }
 
 export function AuthContextProvider({ children }: { children: ReactNode }) {
   const oidcAuth = useOidcAuth()
   const [session, setSession] = useState<Session | null>(null)
+  const [rejectedBankIDSessionId, setRejectedBankIDSessionId] = useState<string | null>(null)
   const [loadedProfile, setLoadedProfile] = useState<{ userId: string; profile: UserProfile | null } | null>(null)
   const [isSessionLoading, setIsSessionLoading] = useState(true)
-  const currentUserId = useRef<string | undefined>(undefined)
+  const currentSession = useRef<Session | null>(null)
   const user = session?.user ?? null
   const userId = user?.id
   const currentProfile = loadedProfile?.userId === userId ? loadedProfile : null
   const profile = currentProfile?.profile ?? null
   const isLoading = isSessionLoading || (!!userId && !currentProfile)
-  const hasBankIDSession = hasBankIDVerification(session)
-  const trustLevel = hasBankIDSession ? 'bankid'
+  const verifiedBankIDSessionId = getBankIDSessionId(session)
+  const bankIDSessionRejected = verifiedBankIDSessionId !== null && verifiedBankIDSessionId === rejectedBankIDSessionId
+  const bankIDSessionId = bankIDSessionRejected ? null : verifiedBankIDSessionId
+  const trustLevel = bankIDSessionId ? 'bankid'
     : profile?.trust_level === 'bankid' ? 'org_nr' : profile?.trust_level ?? 'org_nr'
   // Aktivt bolag — hydreras från sessionStorage så det överlever sidladdning
   const [activeCompany, setActiveCompanyState] = useState<CompanyData | null>(() => {
@@ -115,15 +122,19 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      currentUserId.current = nextSession?.user.id
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      currentSession.current = nextSession
       setSession(nextSession)
       if (!nextSession) setLoadedProfile(null)
+      if (event === 'SIGNED_OUT') {
+        setActiveCompany(null)
+        setRejectedBankIDSessionId(null)
+      }
       setIsSessionLoading(false)
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [setActiveCompany])
 
   useEffect(() => {
     if (!userId) return
@@ -134,7 +145,7 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
         return null
       })
       .then((profile) => {
-        if (!controller.signal.aborted && currentUserId.current === userId) {
+        if (!controller.signal.aborted && currentSession.current?.user.id === userId) {
           setLoadedProfile({ userId, profile })
         }
       })
@@ -161,7 +172,7 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
     if (previous && previous.user.id !== next.user.id) setActiveCompany(null)
     if (previous?.user.id === next.user.id) {
       await readProfile(next.user.id).then((profile) => {
-        if (currentUserId.current === next.user.id) setLoadedProfile({ userId: next.user.id, profile })
+        if (currentSession.current?.user.id === next.user.id) setLoadedProfile({ userId: next.user.id, profile })
       }).catch(() => {
         console.error('[AuthContext] Profilen kunde inte läsas efter BankID-inloggning')
       })
@@ -201,7 +212,7 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signInWithBankID = useCallback(async () => {
-    await oidcAuth.signinRedirect({ acr_values: 'idp:sbid' })
+    await requestBankIDLogin(oidcAuth.signinRedirect)
   }, [oidcAuth])
 
   const signInWithMagicLink = useCallback(async (email: string) => {
@@ -210,20 +221,17 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
-    if (oidcAuth.isAuthenticated) {
-      await oidcAuth.removeUser()
-    }
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    setSession(null)
-    setLoadedProfile(null)
-    setActiveCompany(null)
-  }, [oidcAuth, setActiveCompany])
+    await signOutFromApp(oidcAuth.removeUser, () => supabase.auth.signOut(), toast.error)
+  }, [oidcAuth])
+
+  const rejectBankIDSession = useCallback((sessionId: string) => {
+    if (getBankIDSessionId(currentSession.current) === sessionId) setRejectedBankIDSessionId(sessionId)
+  }, [])
 
   const refreshProfile = useCallback(async () => {
     if (!userId) return
     const profile = await readProfile(userId)
-    if (currentUserId.current === userId) setLoadedProfile({ userId, profile })
+    if (currentSession.current?.user.id === userId) setLoadedProfile({ userId, profile })
   }, [userId])
 
   return (
@@ -232,7 +240,9 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
         user,
         profile,
         trustLevel,
-        hasBankIDSession,
+        bankIDSessionId,
+        bankIDSessionRejected,
+        rejectBankIDSession,
         isAuthenticated: !!user,
         isLoading,
         signIn,
