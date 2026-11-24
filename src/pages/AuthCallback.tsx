@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth as useOidcAuth } from 'react-oidc-context';
 import { useAuth } from '@/contexts/AuthContext';
-import { extractBankIDClaims } from '@/lib/bankid-claims';
 
 export function AuthCallback() {
   const oidcAuth = useOidcAuth();
@@ -26,25 +25,13 @@ export function AuthCallback() {
         if (oidcAuth.isAuthenticated && oidcAuth.user && !handledRef.current) {
           handledRef.current = true;
 
-          // Claims från id_token + UserInfo (mergade av oidc-client-ts när loadUserInfo=true).
-          // Vi når hit först när oidcAuth.isLoading=false (se nedan), dvs efter att UserInfo
-          // hämtats — annars hade nin/namn saknats pga race.
-          const profile = oidcAuth.user.profile;
-          const { personalNumber, name } = extractBankIDClaims(profile);
-
-          if (!personalNumber) {
-            // Logga ENBART claim-nycklarna (aldrig värdena) så vi ser vad tenanten skickar.
-            console.error(
-              '[AuthCallback] Personnummer saknas i id_token/UserInfo. Tillgängliga claims:',
-              Object.keys(profile)
-            );
-            setError('BankID-svaret saknade personnummer. Kontrollera Signicat-claims.');
+          const { id_token: idToken, access_token: accessToken } = oidcAuth.user;
+          if (!idToken || !accessToken) {
+            setError('BankID-svaret saknade inloggningsbevis.');
             return;
           }
 
-          // bankid-auth (skapa/matcha användare, hash, jävskontroll, persistera engagemang)
-          // + ladda profilen så att profile.engagements fylls inför "Dina bolag".
-          await completeBankIDLogin({ name, personalNumber, sub: profile.sub });
+          await completeBankIDLogin(idToken, accessToken);
 
           navigate('/dashboard', { replace: true });
         }
@@ -55,8 +42,6 @@ export function AuthCallback() {
       }
     };
 
-    // Vänta tills OIDC processat callbacken OCH hämtat UserInfo (loadUserInfo=true).
-    // isLoading=false garanterar att user.profile har mergade nin/namn-claims.
     if (!oidcAuth.isLoading) {
       handleCallback();
     }

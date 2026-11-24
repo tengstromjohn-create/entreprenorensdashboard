@@ -1,9 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { corsHeaders, handleCors } from '../_shared/cors.ts'
+import { corsHeaders } from '../_shared/cors.ts'
 import { getAdminClient } from '../_shared/supabase-admin.ts'
 import { runQAPipeline, getFlaggedUserResponse } from '../_shared/qa-pipeline.ts'
 import { generateWithGemini, GENERATION_MODEL } from '../_shared/llm.ts'
 import { buildPrompt } from './prompts.ts'
+import { withContractAuthorization } from './authorization.ts'
 
 /**
  * generate-contract (Spurt B, 2026-06-07) — avtalsmotor v1.
@@ -35,12 +36,9 @@ function sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
   return sanitized
 }
 
-serve(async (req) => {
-  const corsResponse = handleCors(req)
-  if (corsResponse) return corsResponse
-
+serve(withContractAuthorization(async (req, userId) => {
   try {
-    const { contractType, formAnswers, companyData, trustLevel, userId, orgNumber, companyName } = await req.json()
+    const { contractType, formAnswers, companyData, orgNumber, companyName } = await req.json()
 
     if (contractType !== 'nda' && contractType !== 'employment') {
       return new Response(
@@ -54,14 +52,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-    // Avtalsgenerering kräver BankID — dokument med Johns namn bakom.
-    if (trustLevel !== 'bankid' && trustLevel !== 'existing_client') {
-      return new Response(
-        JSON.stringify({ error: 'BankID-verifiering krävs för att generera avtal', code: 'trust_level_required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     if (!Deno.env.get('GEMINI_API_KEY')) {
       return new Response(
         JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
@@ -114,7 +104,7 @@ serve(async (req) => {
     // Claude QA — avtal är det mest känsliga vi genererar
     const qa = await runQAPipeline({
       sourceType: 'contract',
-      userId: userId || undefined,
+      userId,
       geminiOutput: contract,
       geminiMeta: {
         model: GENERATION_MODEL,
@@ -135,7 +125,7 @@ serve(async (req) => {
     const { data: saved, error: saveError } = await admin
       .from('contracts')
       .insert({
-        user_id: userId || null,
+        user_id: userId,
         org_number: orgNumber || null,
         company_name: companyName || null,
         contract_type: contractType,
@@ -153,15 +143,19 @@ serve(async (req) => {
       .select('id')
       .single()
 
-    if (saveError) {
-      console.error('contracts insert failed:', saveError.message)
+    if (saveError || !saved) {
+      console.error('contracts insert failed:', saveError?.code)
+      return new Response(
+        JSON.stringify({ error: 'Avtalet kunde inte sparas. Försök igen.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     // Flaggat avtal levereras INTE — manuell granskning först
     if (!qa.wasAutoDelivered) {
       return new Response(
         JSON.stringify({
-          contractId: saved?.id ?? null,
+          contractId: saved.id,
           qaStatus: qa.qaStatus,
           ...getFlaggedUserResponse('contract'),
         }),
@@ -171,7 +165,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        contractId: saved?.id ?? null,
+        contractId: saved.id,
         status: 'generated',
         qaStatus: qa.qaStatus,
         title: finalContract.title,
@@ -187,4 +181,4 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
-})
+}, (token) => getAdminClient().auth.getUser(token)))

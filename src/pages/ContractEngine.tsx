@@ -1,7 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { callEdgeFunction } from '@/lib/edge-functions'
-import { hasTrustLevel } from '@/types/dashboard'
 import {
   FileSignature, Users, Briefcase, Building2, ShieldCheck, AlertTriangle,
   Loader2, ArrowLeft, ArrowRight, Copy, CheckCircle2, Clock, Sparkles, Download,
@@ -227,8 +226,7 @@ function ChoiceRow<T extends string>({ label, options, value, onChange }: {
 // ---------------------------------------------------------------------------
 
 export function ContractEngine() {
-  const { user, profile, trustLevel, signInWithBankID, activeCompany } = useAuth()
-  const isBankId = hasTrustLevel(trustLevel, 'bankid')
+  const { user, profile, hasBankIDSession, signInWithBankID, activeCompany } = useAuth()
 
   const firstCompany = profile?.engagements?.items?.[0]
   // Aktivt bolag (valt i "Dina bolag") har företräde — fallback till första engagemanget
@@ -319,8 +317,6 @@ export function ContractEngine() {
         companyData: contractType === 'nda'
           ? (activeCompany ?? { name: nda.utgivareNamn, orgNumber: nda.utgivareOrgnr })
           : (activeCompany ?? { name: ownCompanyName, orgNumber: ownCompanyOrgnr }),
-        trustLevel,
-        userId: user?.id || profile?.id || null,
         orgNumber: contractType === 'nda' ? nda.utgivareOrgnr : ownCompanyOrgnr || null,
         companyName: contractType === 'nda' ? nda.utgivareNamn : ownCompanyName || null,
       })
@@ -371,7 +367,7 @@ export function ContractEngine() {
   // -------------------------------------------------------------------------
   // Trust-gate: BankID krävs (LockedOverlay-principen — visa vägen framåt)
   // -------------------------------------------------------------------------
-  if (!isBankId) {
+  if (!hasBankIDSession) {
     return (
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold tracking-tight text-[#0E3047] mb-6">Avtalsmotorn</h1>
