@@ -1,11 +1,9 @@
 /**
  * Delad Roaring-klient för edge functions (Spurt A2, 2026-06-05).
+ * Konsumeras av lookup-company + get-my-companies sedan S28-3 (2026-07-05).
  *
  * OAuth 2.0 client_credentials mot https://api.roaring.io/token.
  * Secrets: ROARING_CLIENT_ID + ROARING_CLIENT_SECRET (Supabase secrets, läses via Deno.env).
- *
- * OBS: lookup-company har en egen (äldre, identisk) kopia av token-logiken —
- * migrera den hit vid nästa touch av den funktionen.
  */
 
 let cachedToken: { value: string; expiresAt: number } | null = null
