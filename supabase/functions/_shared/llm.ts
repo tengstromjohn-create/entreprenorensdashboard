@@ -1,21 +1,15 @@
 /**
  * Modellabstraktionslager (S28-3, 2026-07-05).
  *
- * En enda plats där GENERATION_MODEL (Gemini) och QA_MODEL (Claude) definieras
- * och där fetch-mekaniken mot respektive leverantör ligger. Defaults matchar
- * det som körde live 2026-07-04 — inga beteendeförändringar sker vid införandet;
- * modellväxling görs i S32 som ren env-konfiguration.
- *
- * Krav på graceful degradation i qa-pipeline bevaras: den saknade nyckeln
- * hanteras av anroparen (se _shared/qa-pipeline.ts), qaWithClaude här kastar
- * på HTTP-fel så att fallbacken triggas.
+ * Modellförval och API-anrop för Gemini och Claude. Modellval kan
+ * åsidosättas med GENERATION_MODEL och QA_MODEL.
  */
 
 export const GENERATION_MODEL =
   Deno.env.get('GENERATION_MODEL') ?? 'gemini-2.5-flash'
 
 export const QA_MODEL =
-  Deno.env.get('QA_MODEL') ?? 'claude-sonnet-4-20250514'
+  Deno.env.get('QA_MODEL') ?? 'claude-sonnet-5-5'
 
 export interface LlmResult {
   text: string | undefined
@@ -42,8 +36,7 @@ export async function generateWithGemini(
     throw new Error('GEMINI_API_KEY not configured')
   }
 
-  // deno-lint-ignore no-explicit-any
-  const generationConfig: Record<string, any> = {}
+  const generationConfig: Record<string, unknown> = {}
   if (config?.temperature !== undefined) generationConfig.temperature = config.temperature
   if (config?.maxOutputTokens !== undefined) generationConfig.maxOutputTokens = config.maxOutputTokens
   if (config?.thinkingBudget !== undefined) generationConfig.thinkingConfig = { thinkingBudget: config.thinkingBudget }
@@ -74,16 +67,13 @@ export async function generateWithGemini(
 }
 
 /**
- * Anthropic Messages — ersätter fetchen i qa-pipeline.
- * Kastar vid saknad nyckel och HTTP-fel; qa-pipelinens graceful degradation
- * (saknad nyckel → auto-approve, Claude-fel → Gemini-output godkänns) sköts
- * av anroparen och är oförändrad.
+ * Anthropic Messages för QA. Returnerar textblock från ett slutfört svar.
  */
 export async function qaWithClaude(
   system: string,
   userContent: string,
   maxTokens?: number
-): Promise<LlmResult & { raw: unknown }> {
+): Promise<LlmResult> {
   const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!anthropicKey) {
     throw new Error('ANTHROPIC_API_KEY not configured')
@@ -102,17 +92,29 @@ export async function qaWithClaude(
       system,
       messages: [{ role: 'user', content: userContent }],
     }),
+  }).catch(() => {
+    throw new Error('Claude API network error')
   })
 
   if (!resp.ok) {
     throw new Error(`Claude API error: ${resp.status}`)
   }
 
-  const data = await resp.json()
+  const data = await resp.json().catch(() => {
+    throw new Error('Invalid Claude API response')
+  })
+  if (data?.stop_reason !== 'end_turn' || !Array.isArray(data.content)) {
+    throw new Error('Claude QA did not return a complete response')
+  }
+
   return {
-    text: data.content?.[0]?.text as string | undefined,
+    text: data.content
+      .filter((block: { type?: string; text?: unknown } | null) =>
+        block?.type === 'text' && typeof block.text === 'string'
+      )
+      .map((block: { text: string }) => block.text)
+      .join(''),
     tokensIn: data.usage?.input_tokens as number | undefined,
     tokensOut: data.usage?.output_tokens as number | undefined,
-    raw: data,
   }
 }
