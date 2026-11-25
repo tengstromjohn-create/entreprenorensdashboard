@@ -1,5 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getCompanyPrefill } from '@/lib/active-company'
+import { getBankIDSessionId } from '@/lib/auth-storage'
 import { callEdgeFunction } from '@/lib/edge-functions'
 import { handleBankIDRejection } from '@/lib/bankid-flow'
 import { supabase } from '@/lib/supabase'
@@ -229,12 +231,17 @@ function ChoiceRow<T extends string>({ label, options, value, onChange }: {
 // ---------------------------------------------------------------------------
 
 export function ContractEngine() {
-  const { user, profile, bankIDSessionId, bankIDSessionRejected, rejectBankIDSession, signInWithBankID, activeCompany } = useAuth()
+  const auth = useAuth()
+  return <AccountContractEngine key={auth.user?.id} auth={auth} />
+}
 
-  const firstCompany = profile?.engagements?.items?.[0]
+function AccountContractEngine({ auth }: { auth: ReturnType<typeof useAuth> }) {
+  const { user, profile, bankIDSessionId, bankIDSessionRejected, rejectBankIDSession, signInWithBankID, activeCompany } = auth
   // Aktivt bolag (valt i "Dina bolag") har företräde — fallback till första engagemanget
-  const ownCompanyName = activeCompany?.name ?? firstCompany?.companyName ?? ''
-  const ownCompanyOrgnr = activeCompany?.orgNumber ?? firstCompany?.orgNumber ?? ''
+  const { name: ownCompanyName, orgNumber: ownCompanyOrgnr, address: ownCompanyAddress } = getCompanyPrefill(
+    activeCompany,
+    profile?.engagements?.items?.[0],
+  )
 
   const [view, setView] = useState<ViewState>('select')
   const [contractType, setContractType] = useState<ContractType>('nda')
@@ -249,7 +256,7 @@ export function ContractEngine() {
     avtalstyp: 'ensidigt',
     utgivareNamn: ownCompanyName,
     utgivareOrgnr: ownCompanyOrgnr,
-    utgivareAdress: activeCompany?.address ?? '',
+    utgivareAdress: ownCompanyAddress,
     mottagareNamn: '',
     mottagareOrgnr: '',
     mottagareAdress: '',
@@ -286,6 +293,11 @@ export function ContractEngine() {
     setView('loading')
     setErrorMessage('')
     try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session || session.user.id !== user?.id || !bankIDSessionId ||
+          getBankIDSessionId(session) !== bankIDSessionId) {
+        throw new Error('Din session har ändrats. Verifiera dig igen för att skapa avtal.')
+      }
       const formAnswers = contractType === 'nda'
         ? {
             avtalstyp: nda.avtalstyp,
@@ -315,6 +327,8 @@ export function ContractEngine() {
           }
 
       const { data, error, response } = await supabase.functions.invoke<GenerateResponse>('generate-contract', {
+        // Ett kontobyte i en annan flik får inte byta token för det här formuläret.
+        headers: { Authorization: `Bearer ${session.access_token}` },
         body: {
           contractType,
           formAnswers,

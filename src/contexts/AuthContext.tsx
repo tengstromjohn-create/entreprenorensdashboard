@@ -9,8 +9,10 @@ import {
 } from 'react'
 import { useAuth as useOidcAuth } from 'react-oidc-context'
 import { toast } from 'sonner'
+import { readActiveCompany, storeActiveCompany } from '@/lib/active-company'
+import { getBankIDSessionId } from '@/lib/auth-storage'
 import { requestBankIDLogin, signOutFromApp, type BankIDLoginProof } from '@/lib/bankid-flow'
-import { supabase } from '@/lib/supabase'
+import { authStorage, authStorageKey, supabase } from '@/lib/supabase'
 import type { Session, User } from '@supabase/supabase-js'
 import type { CompanyData, EngagementData } from '@/types/dashboard'
 
@@ -68,18 +70,6 @@ async function readProfile(userId: string, signal?: AbortSignal): Promise<UserPr
   return data as UserProfile | null
 }
 
-function getBankIDSessionId(session: Session | null): string | null {
-  const verifiedSessionId: unknown = session?.user.app_metadata.bankid_session_id
-  if (typeof verifiedSessionId !== 'string' || !verifiedSessionId || !session) return null
-  try {
-    // Visningsstatus. Avtalsfunktionen verifierar tokenen och läser aktuell app_metadata hos Auth.
-    const payload = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(atob(payload)).session_id === verifiedSessionId ? verifiedSessionId : null
-  } catch {
-    return null
-  }
-}
-
 export function AuthContextProvider({ children }: { children: ReactNode }) {
   const oidcAuth = useOidcAuth()
   const [session, setSession] = useState<Session | null>(null)
@@ -97,44 +87,49 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   const bankIDSessionId = bankIDSessionRejected ? null : verifiedBankIDSessionId
   const trustLevel = bankIDSessionId ? 'bankid'
     : profile?.trust_level === 'bankid' ? 'org_nr' : profile?.trust_level ?? 'org_nr'
-  // Aktivt bolag — hydreras från sessionStorage så det överlever sidladdning
-  const [activeCompany, setActiveCompanyState] = useState<CompanyData | null>(() => {
-    try {
-      const stored = sessionStorage.getItem('grundat_active_company')
-      return stored ? (JSON.parse(stored) as CompanyData) : null
-    } catch {
-      return null
-    }
-  })
+  const [activeCompany, setActiveCompanyState] = useState<CompanyData | null>(null)
 
   const setActiveCompany = useCallback((company: CompanyData | null) => {
+    if (!userId || currentSession.current?.user.id !== userId) return
     setActiveCompanyState(company)
-    try {
-      if (company) {
-        sessionStorage.setItem('grundat_active_company', JSON.stringify(company))
-      } else {
-        sessionStorage.removeItem('grundat_active_company')
-      }
-    } catch {
-      // sessionStorage kan vara otillgänglig (privat läge) — state räcker då
-    }
-  }, [])
+    storeActiveCompany(sessionStorage, userId, company)
+  }, [userId])
+
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      currentSession.current = nextSession
-      setSession(nextSession)
-      if (!nextSession) setLoadedProfile(null)
-      if (event === 'SIGNED_OUT') {
-        setActiveCompany(null)
+    function applySession(next: Session | null) {
+      const nextUserId = next?.user.id
+      if (!nextUserId || currentSession.current?.user.id !== nextUserId) {
+        setActiveCompanyState(readActiveCompany(sessionStorage, nextUserId))
+        setLoadedProfile(null)
         setRejectedBankIDSessionId(null)
       }
+      currentSession.current = next
+      setSession(next)
       setIsSessionLoading(false)
+    }
+
+    function syncFromStorage() {
+      applySession(authStorage.readSession())
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      // SDK:ns händelse kan komma från en annan flik. Läs sessionen som gäller här.
+      if (event === 'INITIAL_SESSION' && !nextSession) applySession(null)
+      else syncFromStorage()
     })
 
-    return () => subscription.unsubscribe()
-  }, [setActiveCompany])
+    function onStorage(event: StorageEvent) {
+      if (event.storageArea === localStorage && (event.key === authStorageKey || event.key === null)) {
+        syncFromStorage()
+      }
+    }
+
+    window.addEventListener('storage', onStorage)
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [])
 
   useEffect(() => {
     if (!userId) return
@@ -163,21 +158,20 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
     if (error || !data?.accessToken || !data.refreshToken) {
       throw new Error('BankID-inloggningen kunde inte verifieras. Försök igen.')
     }
-    const { data: { session: previous } } = await supabase.auth.getSession()
+    const previousUserId = currentSession.current?.user.id
     const { data: { session: next }, error: sessionError } = await supabase.auth.setSession({
       access_token: data.accessToken,
       refresh_token: data.refreshToken,
     })
     if (sessionError || !next) throw new Error('Supabase-inloggningen kunde inte slutföras.')
-    if (previous && previous.user.id !== next.user.id) setActiveCompany(null)
-    if (previous?.user.id === next.user.id) {
+    if (previousUserId === next.user.id) {
       await readProfile(next.user.id).then((profile) => {
         if (currentSession.current?.user.id === next.user.id) setLoadedProfile({ userId: next.user.id, profile })
       }).catch(() => {
         console.error('[AuthContext] Profilen kunde inte läsas efter BankID-inloggning')
       })
     }
-  }, [setActiveCompany])
+  }, [])
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
