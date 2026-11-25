@@ -155,12 +155,13 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
         return null
       })
       .then((profile) => {
-        if (!controller.signal.aborted && currentSession.current?.user.id === userId) {
+        if (!controller.signal.aborted && currentSession.current?.user.id === userId &&
+            currentAccountRevision.current === accountRevision) {
           setLoadedProfile({ userId, profile })
         }
       })
     return () => controller.abort()
-  }, [userId])
+  }, [userId, accountRevision])
 
   const completeBankIDLogin = useCallback(async (proof: BankIDLoginProof) => {
     const { data, error } = await supabase.functions.invoke<{ accessToken: string; refreshToken: string }>(

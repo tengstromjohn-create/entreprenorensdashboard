@@ -132,6 +132,16 @@ async function testQueuedAccountChanges(context, bankID) {
     await receiver.getByRole('button', { name: 'Öppna avtalsmotorn' }).click()
     await receiver.getByRole('button', { name: /Sekretessavtal/ }).click()
     equal(await receiver.getByPlaceholder('AB Företaget').inputValue(), companyName)
+    await signIn(writer, otherAccount)
+    await expectAccount(receiver, otherAccount.user.id)
+    await receiver.getByRole('heading', { name: 'Lås upp med BankID' }).waitFor()
+    equal(await receiver.getByTestId('company').textContent(), 'inget bolag')
+    equal(await receiver.evaluate((key) => sessionStorage.getItem(key), companyKey), null)
+    await signIn(receiver, firstAccount)
+    await receiver.getByRole('button', { name: 'Slutför bolagsuppslag' }).click()
+    await receiver.getByRole('button', { name: /Sekretessavtal/ }).click()
+    equal(await receiver.getByPlaceholder('AB Företaget').inputValue(), '')
+    return
   }
 
   // Köa Chromiums riktiga lagringshändelser så att providern får båda efter
@@ -154,39 +164,34 @@ async function testQueuedAccountChanges(context, bankID) {
       })
     }, { capture: true })
   }, authKey)
-  const firstValue = bankID ? { bankIDSessionId: 'session-a' } : firstAccount
-  if (!bankID) {
-    const renewed = makeSession('konto-a', 'session-a', { rotation: 1 })
-    await writer.evaluate(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: authKey, value: renewed })
-    await receiver.waitForFunction(() => window.observedAccountChanges.length === 1)
-    await receiver.waitForFunction((token) => window.authTest.realtimeToken() === token, renewed.access_token)
-    equal(await receiver.getByTestId('company').textContent(), companyName)
-    equal(await receiver.evaluate((key) => !!sessionStorage.getItem(key), companyKey), true)
-    await receiver.evaluate(() => { window.observedAccountChanges.length = 0 })
-  }
-  await receiver.evaluate(() => { window.deferAccountChanges = true })
+  const renewed = makeSession('konto-a', 'session-a', { rotation: 1 })
+  await writer.evaluate(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: authKey, value: renewed })
+  await receiver.waitForFunction(() => window.observedAccountChanges.length === 1)
+  await receiver.waitForFunction((token) => window.authTest.realtimeToken() === token, renewed.access_token)
+  equal(await receiver.getByTestId('company').textContent(), companyName)
+  equal(await receiver.evaluate((key) => !!sessionStorage.getItem(key), companyKey), true)
+  await receiver.evaluate(() => {
+    window.observedAccountChanges.length = 0
+    window.deferAccountChanges = true
+  })
   await writer.evaluate(({ key, next, final }) => {
     localStorage.setItem(key, JSON.stringify(next))
     localStorage.setItem(key, JSON.stringify(final))
-  }, { key: authKey, next: otherAccount, final: firstValue })
+  }, { key: authKey, next: otherAccount, final: firstAccount })
   await receiver.waitForFunction(() => window.deferredAccountChanges.length === 2)
   await receiver.evaluate(() => {
     window.deferAccountChanges = false
     for (const event of window.deferredAccountChanges) window.dispatchEvent(event)
   })
   deepStrictEqual(await receiver.evaluate(() => window.observedAccountChanges.map(({ newValue, current }) => [newValue, current])), [
-    [JSON.stringify(otherAccount), JSON.stringify(firstValue)],
-    [JSON.stringify(firstValue), JSON.stringify(firstValue)],
+    [JSON.stringify(otherAccount), JSON.stringify(firstAccount)],
+    [JSON.stringify(firstAccount), JSON.stringify(firstAccount)],
   ])
   await expectAccount(receiver, firstAccount.user.id)
   await receiver.getByTestId('company').filter({ hasText: 'inget bolag' }).waitFor()
   await receiver.getByRole('button', { name: 'Slutför bolagsuppslag' }).click()
   equal(await receiver.getByTestId('company').textContent(), 'inget bolag')
   equal(await receiver.evaluate((key) => sessionStorage.getItem(key), companyKey), null)
-  if (bankID) {
-    await receiver.getByRole('button', { name: /Sekretessavtal/ }).click()
-    equal(await receiver.getByPlaceholder('AB Företaget').inputValue(), '')
-  }
 }
 
 const browser = await chromium.launch()
@@ -194,7 +199,7 @@ try {
   for (const [name, run] of [
     ['F21 och F20: isolering, förnyelse, omladdning och kopierad flik', testBankIDIsolation],
     ['F22: köat A → B → A i providern, även med ett pågående bolagsuppslag', (context) => testQueuedAccountChanges(context, false)],
-    ['F19: köat BankID-kontobyte rensar öppet NDA och tidigare förifyllnad', (context) => testQueuedAccountChanges(context, true)],
+    ['F19: BankID-kontobyte i en annan flik rensar öppet NDA och tidigare förifyllnad', (context) => testQueuedAccountChanges(context, true)],
   ]) {
     const context = await browser.newContext()
     try {
