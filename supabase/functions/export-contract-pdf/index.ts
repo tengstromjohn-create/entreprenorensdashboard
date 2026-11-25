@@ -46,7 +46,7 @@ function sanitizeWinAnsi(text: string): string {
     .replace(/–/g, '–')
     .replace(/—/g, '—')
     .replace(/…/g, '...')
-    .replace(/ /g, ' ')
+    .replace(/\u00a0/g, ' ')
     // Allt som inte ryms i Latin-1/cp1252-ish → '?'
     .replace(/[^\x20-\x7E¡-ÿ‘’“”–—•]/g, '?')
 }

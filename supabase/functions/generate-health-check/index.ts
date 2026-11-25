@@ -106,11 +106,12 @@ function sanitizeText(text: string): string {
   return text.replace(/<[^>]*>/g, '').slice(0, 800)
 }
 
-// deno-lint-ignore no-explicit-any
-function buildReadable(surveyReadable: any, surveyAnswers: any): string {
+type SurveyAnswer = { area: string; question: string; answer: string }
+
+function buildReadable(surveyReadable: unknown, surveyAnswers: unknown): string {
   if (Array.isArray(surveyReadable) && surveyReadable.length > 0) {
     return surveyReadable
-      .map((r) => `- [${r.area}] ${sanitizeText(r.question)}: ${sanitizeText(r.answer)}`)
+      .map((r: SurveyAnswer) => `- [${r.area}] ${sanitizeText(r.question)}: ${sanitizeText(r.answer)}`)
       .join('\n')
   }
   // Fallback: råa svar (om en äldre frontend skickar bara surveyAnswers)
@@ -148,8 +149,11 @@ serve(async (req) => {
     const resolvedTrustLevel = trustLevel === 'bankid' ? 'bankid' : 'org_only'
 
     // Rensa bort rå-Roaring-payloaden (signatory.raw) — stor och irrelevant för analysen
-    // deno-lint-ignore no-explicit-any
-    const promptCompanyData: any = companyData ? { ...companyData } : {}
+    const promptCompanyData: {
+      signatory?: { raw?: unknown }
+      sniCode?: string
+      industryCode?: string
+    } = companyData ? { ...companyData } : {}
     if (promptCompanyData.signatory?.raw) {
       promptCompanyData.signatory = { ...promptCompanyData.signatory, raw: undefined }
     }

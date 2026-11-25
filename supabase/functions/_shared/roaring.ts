@@ -84,6 +84,31 @@ export interface EngagementData {
   items: Engagement[]
 }
 
+type RoaringRole = {
+  roleName?: string | null
+  roleText?: string | null
+  text?: string | null
+  name?: string | null
+}
+
+type RoaringEngagement = {
+  companyId?: string | number | null
+  orgNumber?: string | number | null
+  organizationNumber?: string | number | null
+  companyOrgNo?: string | number | null
+  companyName?: string | null
+  name?: string | null
+  topCompanyName?: string | null
+  roles?: RoaringRole[] | null
+  positions?: RoaringRole[] | null
+}
+
+type RoaringEngagementResponse = {
+  status?: { code?: number } | null
+  engagements?: RoaringEngagement[] | null
+  fullName?: string
+}
+
 /**
  * Hämtar en persons bolagsengagemang via Roaring Company Engagements 3.0.
  * Endpoint verifierad mot developer.roaring.io 2026-06-05:
@@ -108,7 +133,7 @@ export async function fetchEngagements(
 
   // Exkludera revisor (8) och revisorssuppleant (9) direkt i anropet
   const path = `/se/company/engagement/3.0/${pnr}?excludeWithRoleCode=8&excludeWithRoleCode=9`
-  const res = await callRoaring<unknown>(token, path)
+  const res = await callRoaring<RoaringEngagementResponse>(token, path)
 
   if (!res.ok) {
     // 404 = personen finns inte / har inga engagemang — inte ett fel för oss
@@ -118,16 +143,14 @@ export async function fetchEngagements(
     return { ok: false, error: `Roaring engagement-anrop misslyckades: ${res.status} ${res.error}` }
   }
 
-  // deno-lint-ignore no-explicit-any
-  const body = res.data as any
+  const body = res.data
 
   // status.code: 0 = found, 1 = not found (samma mönster som overview)
   if (body?.status?.code !== undefined && body.status.code !== 0) {
     return { ok: true, data: { fetchedAt: new Date().toISOString(), source: 'roaring', items: [] } }
   }
 
-  // deno-lint-ignore no-explicit-any
-  const rawEngagements: any[] = body?.engagements ?? []
+  const rawEngagements = body?.engagements ?? []
 
   const items: Engagement[] = rawEngagements
     .map((e) => {
@@ -136,8 +159,7 @@ export async function fetchEngagements(
       ).replace('-', '')
       const companyName: string = e.companyName ?? e.name ?? e.topCompanyName ?? 'Okänt bolag'
       // Roller kan ligga som e.roles[] eller e.positions[] med roleName/roleText/text
-      // deno-lint-ignore no-explicit-any
-      const rawRoles: any[] = e.roles ?? e.positions ?? []
+      const rawRoles = e.roles ?? e.positions ?? []
       const roles: string[] = rawRoles
         .map((r) => r.roleName ?? r.roleText ?? r.text ?? r.name ?? '')
         .filter(Boolean)

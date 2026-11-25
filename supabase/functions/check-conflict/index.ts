@@ -2,6 +2,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders, handleCors } from '../_shared/cors.ts'
 import { getAdminClient } from '../_shared/supabase-admin.ts'
 
+type ConflictRegistryMatch = {
+  id: string
+  party_name: string
+  matter_type: string | null
+}
+
 serve(async (req) => {
   const corsResponse = handleCors(req)
   if (corsResponse) return corsResponse
@@ -18,12 +24,6 @@ serve(async (req) => {
 
     const admin = getAdminClient()
 
-    // Bygg dynamisk sökning mot jävsregistret
-    let query = admin
-      .from('conflict_check_registry')
-      .select('*')
-      .eq('is_active', true)
-
     const conditions: string[] = []
     if (personalNumberHash) {
       conditions.push(`personal_number.eq.${personalNumberHash}`)
@@ -32,7 +32,7 @@ serve(async (req) => {
       conditions.push(`org_number.eq.${orgNumber}`)
     }
 
-    let results: any[] = []
+    const results: ConflictRegistryMatch[] = []
 
     // Sök på personnummer och orgnummer
     if (conditions.length > 0) {
@@ -77,7 +77,7 @@ serve(async (req) => {
     )
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

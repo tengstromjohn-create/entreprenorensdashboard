@@ -23,6 +23,7 @@ export function SiteGate({ children }: { children: ReactNode }) {
   // If no password is set, skip the gate entirely
   useEffect(() => {
     if (!sitePassword) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Behåll laddningssteget tills åtkomst har kontrollerats efter mount.
       setUnlocked(true)
       setChecking(false)
       return
