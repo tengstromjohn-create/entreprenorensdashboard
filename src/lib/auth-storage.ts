@@ -11,6 +11,16 @@ function parseAuth(value: string | null): StoredAuth | null {
   }
 }
 
+function storedAccount(value: string | null): string | null {
+  const auth = parseAuth(value)
+  if (auth?.bankIDSessionId) return `bankid:${auth.bankIDSessionId}`
+  return auth?.user?.id ? `user:${auth.user.id}` : null
+}
+
+export function didStoredAccountChange(event: { key: string | null; oldValue: string | null; newValue: string | null }): boolean {
+  return event.key === null || storedAccount(event.oldValue) !== storedAccount(event.newValue)
+}
+
 function isBankIDAccount(auth: StoredAuth | null): boolean {
   const metadata = auth?.user?.app_metadata
   return typeof metadata?.bankid_identity_key === 'string' || typeof metadata?.bankid_session_id === 'string'

@@ -16,9 +16,9 @@ export function readActiveCompany(storage: CompanyStorage, userId: string | unde
   return null
 }
 
-export function storeActiveCompany(storage: CompanyStorage, userId: string, company: CompanyData | null) {
+export function storeActiveCompany(storage: CompanyStorage, userId: string | undefined, company: CompanyData | null) {
   try {
-    if (company) storage.setItem(storageKey, JSON.stringify({ userId, company }))
+    if (userId && company) storage.setItem(storageKey, JSON.stringify({ userId, company }))
     else storage.removeItem(storageKey)
   } catch {
     // Bolagsvalet kan användas i minnet när sessionStorage är otillgänglig.

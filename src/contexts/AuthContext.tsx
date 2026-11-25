@@ -10,7 +10,7 @@ import {
 import { useAuth as useOidcAuth } from 'react-oidc-context'
 import { toast } from 'sonner'
 import { readActiveCompany, storeActiveCompany } from '@/lib/active-company'
-import { getBankIDSessionId } from '@/lib/auth-storage'
+import { didStoredAccountChange, getBankIDSessionId } from '@/lib/auth-storage'
 import { requestBankIDLogin, signOutFromApp, type BankIDLoginProof } from '@/lib/bankid-flow'
 import { authStorage, authStorageKey, supabase } from '@/lib/supabase'
 import type { Session, User } from '@supabase/supabase-js'
@@ -55,6 +55,7 @@ interface AuthContextType {
    */
   activeCompany: CompanyData | null
   setActiveCompany: (company: CompanyData | null) => void
+  accountRevision: number
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -77,6 +78,7 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   const [loadedProfile, setLoadedProfile] = useState<{ userId: string; profile: UserProfile | null } | null>(null)
   const [isSessionLoading, setIsSessionLoading] = useState(true)
   const currentSession = useRef<Session | null>(null)
+  const currentAccountRevision = useRef(0)
   const user = session?.user ?? null
   const userId = user?.id
   const currentProfile = loadedProfile?.userId === userId ? loadedProfile : null
@@ -88,18 +90,28 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   const trustLevel = bankIDSessionId ? 'bankid'
     : profile?.trust_level === 'bankid' ? 'org_nr' : profile?.trust_level ?? 'org_nr'
   const [activeCompany, setActiveCompanyState] = useState<CompanyData | null>(null)
+  const [accountRevision, setAccountRevision] = useState(0)
 
   const setActiveCompany = useCallback((company: CompanyData | null) => {
-    if (!userId || currentSession.current?.user.id !== userId) return
+    if (!userId || currentSession.current?.user.id !== userId || currentAccountRevision.current !== accountRevision) return
     setActiveCompanyState(company)
     storeActiveCompany(sessionStorage, userId, company)
-  }, [userId])
+  }, [userId, accountRevision])
 
   useEffect(() => {
-    function applySession(next: Session | null) {
+    function applySession(next: Session | null, accountChangedInStorage = false) {
       const nextUserId = next?.user.id
-      if (!nextUserId || currentSession.current?.user.id !== nextUserId) {
+      const previousUserId = currentSession.current?.user.id
+      const userChanged = previousUserId !== nextUserId
+      if (accountChangedInStorage || (previousUserId && userChanged)) {
+        storeActiveCompany(sessionStorage, nextUserId, null)
+        setActiveCompanyState(null)
+        currentAccountRevision.current += 1
+        setAccountRevision(currentAccountRevision.current)
+      } else if (!nextUserId || userChanged) {
         setActiveCompanyState(readActiveCompany(sessionStorage, nextUserId))
+      }
+      if (!nextUserId || userChanged) {
         setLoadedProfile(null)
         setRejectedBankIDSessionId(null)
       }
@@ -108,19 +120,22 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
       setIsSessionLoading(false)
     }
 
-    function syncFromStorage() {
-      applySession(authStorage.readSession())
-    }
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      // SDK:ns händelse kan komma från en annan flik. Läs sessionen som gäller här.
       if (event === 'INITIAL_SESSION' && !nextSession) applySession(null)
-      else syncFromStorage()
+      else applySession(authStorage.readSession())
     })
 
     function onStorage(event: StorageEvent) {
       if (event.storageArea === localStorage && (event.key === authStorageKey || event.key === null)) {
-        syncFromStorage()
+        const next = authStorage.readSession()
+        const tokenChanged = currentSession.current?.access_token !== next?.access_token
+        // Läs själva händelsen så att även köade byten A → B → A rensar valet.
+        applySession(next, didStoredAccountChange(event))
+        if (tokenChanged) {
+          void supabase.realtime.setAuth(next?.access_token).catch(() => {
+            console.error('[AuthContext] Realtime-sessionen kunde inte synkroniseras')
+          })
+        }
       }
     }
 
@@ -248,6 +263,7 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
         completeBankIDLogin,
         activeCompany,
         setActiveCompany,
+        accountRevision,
       }}
     >
       {children}

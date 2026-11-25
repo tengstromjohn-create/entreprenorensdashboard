@@ -232,7 +232,7 @@ function ChoiceRow<T extends string>({ label, options, value, onChange }: {
 
 export function ContractEngine() {
   const auth = useAuth()
-  return <AccountContractEngine key={auth.user?.id} auth={auth} />
+  return <AccountContractEngine key={`${auth.user?.id ?? ''}:${auth.accountRevision}`} auth={auth} />
 }
 
 function AccountContractEngine({ auth }: { auth: ReturnType<typeof useAuth> }) {
