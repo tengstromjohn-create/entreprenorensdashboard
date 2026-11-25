@@ -1,66 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth as useOidcAuth } from 'react-oidc-context';
 import { useAuth } from '@/contexts/AuthContext';
-import { extractBankIDClaims } from '@/lib/bankid-claims';
+import { bankIDOidcClient } from '@/lib/auth';
+import { readBankIDCallback } from '@/lib/bankid-flow';
 
 export function AuthCallback() {
-  const oidcAuth = useOidcAuth();
   const { completeBankIDLogin } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
-  // PKCE-callbacken kan rendera om flera gånger — kör hanteringen exakt en gång
   const handledRef = useRef(false);
 
   useEffect(() => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+
+    const url = window.location.href;
+    window.history.replaceState(window.history.state, '', window.location.pathname);
+
     const handleCallback = async () => {
       try {
-        // oidc-client-ts hanterar code/PKCE-utbytet automatiskt; här tar vi vid
-        // när användaren är autentiserad.
-
-        if (oidcAuth.error) {
-          setError(oidcAuth.error.message);
-          return;
-        }
-
-        if (oidcAuth.isAuthenticated && oidcAuth.user && !handledRef.current) {
-          handledRef.current = true;
-
-          // Claims från id_token + UserInfo (mergade av oidc-client-ts när loadUserInfo=true).
-          // Vi når hit först när oidcAuth.isLoading=false (se nedan), dvs efter att UserInfo
-          // hämtats — annars hade nin/namn saknats pga race.
-          const profile = oidcAuth.user.profile;
-          const { personalNumber, name } = extractBankIDClaims(profile);
-
-          if (!personalNumber) {
-            // Logga ENBART claim-nycklarna (aldrig värdena) så vi ser vad tenanten skickar.
-            console.error(
-              '[AuthCallback] Personnummer saknas i id_token/UserInfo. Tillgängliga claims:',
-              Object.keys(profile)
-            );
-            setError('BankID-svaret saknade personnummer. Kontrollera Signicat-claims.');
-            return;
-          }
-
-          // bankid-auth (skapa/matcha användare, hash, jävskontroll, persistera engagemang)
-          // + ladda profilen så att profile.engagements fylls inför "Dina bolag".
-          await completeBankIDLogin({ name, personalNumber, sub: profile.sub });
-
-          navigate('/dashboard', { replace: true });
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Autentiseringen misslyckades'
-        );
+        const proof = await readBankIDCallback(bankIDOidcClient, url);
+        await completeBankIDLogin(proof);
+        navigate('/dashboard', { replace: true });
+      } catch {
+        setError('BankID-inloggningen kunde inte slutföras. Starta en ny inloggning.');
       }
     };
 
-    // Vänta tills OIDC processat callbacken OCH hämtat UserInfo (loadUserInfo=true).
-    // isLoading=false garanterar att user.profile har mergade nin/namn-claims.
-    if (!oidcAuth.isLoading) {
-      handleCallback();
-    }
-  }, [oidcAuth.isLoading, oidcAuth.isAuthenticated, oidcAuth.user, oidcAuth.error, navigate, completeBankIDLogin]);
+    void handleCallback();
+  }, [navigate, completeBankIDLogin]);
 
   if (error) {
     return (

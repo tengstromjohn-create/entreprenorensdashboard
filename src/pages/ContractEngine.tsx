@@ -1,7 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getCompanyPrefill } from '@/lib/active-company'
+import { getBankIDSessionId } from '@/lib/auth-storage'
 import { callEdgeFunction } from '@/lib/edge-functions'
-import { hasTrustLevel } from '@/types/dashboard'
+import { handleBankIDRejection } from '@/lib/bankid-flow'
+import { supabase } from '@/lib/supabase'
+import { toast } from 'sonner'
 import {
   FileSignature, Users, Briefcase, Building2, ShieldCheck, AlertTriangle,
   Loader2, ArrowLeft, ArrowRight, Copy, CheckCircle2, Clock, Sparkles, Download,
@@ -227,13 +231,17 @@ function ChoiceRow<T extends string>({ label, options, value, onChange }: {
 // ---------------------------------------------------------------------------
 
 export function ContractEngine() {
-  const { user, profile, trustLevel, signInWithBankID, activeCompany } = useAuth()
-  const isBankId = hasTrustLevel(trustLevel, 'bankid')
+  const auth = useAuth()
+  return <AccountContractEngine key={auth.user?.id} auth={auth} />
+}
 
-  const firstCompany = profile?.engagements?.items?.[0]
+function AccountContractEngine({ auth }: { auth: ReturnType<typeof useAuth> }) {
+  const { user, profile, bankIDSessionId, bankIDSessionRejected, rejectBankIDSession, signInWithBankID, activeCompany } = auth
   // Aktivt bolag (valt i "Dina bolag") har företräde — fallback till första engagemanget
-  const ownCompanyName = activeCompany?.name ?? firstCompany?.companyName ?? ''
-  const ownCompanyOrgnr = activeCompany?.orgNumber ?? firstCompany?.orgNumber ?? ''
+  const { name: ownCompanyName, orgNumber: ownCompanyOrgnr, address: ownCompanyAddress } = getCompanyPrefill(
+    activeCompany,
+    profile?.engagements?.items?.[0],
+  )
 
   const [view, setView] = useState<ViewState>('select')
   const [contractType, setContractType] = useState<ContractType>('nda')
@@ -248,7 +256,7 @@ export function ContractEngine() {
     avtalstyp: 'ensidigt',
     utgivareNamn: ownCompanyName,
     utgivareOrgnr: ownCompanyOrgnr,
-    utgivareAdress: activeCompany?.address ?? '',
+    utgivareAdress: ownCompanyAddress,
     mottagareNamn: '',
     mottagareOrgnr: '',
     mottagareAdress: '',
@@ -285,6 +293,11 @@ export function ContractEngine() {
     setView('loading')
     setErrorMessage('')
     try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session || session.user.id !== user?.id || !bankIDSessionId ||
+          getBankIDSessionId(session) !== bankIDSessionId) {
+        throw new Error('Din session har ändrats. Verifiera dig igen för att skapa avtal.')
+      }
       const formAnswers = contractType === 'nda'
         ? {
             avtalstyp: nda.avtalstyp,
@@ -313,20 +326,27 @@ export function ContractEngine() {
             konkurrensklausul: emp.konkurrensklausul,
           }
 
-      const response = await callEdgeFunction<GenerateResponse>('generate-contract', {
-        contractType,
-        formAnswers,
-        companyData: contractType === 'nda'
-          ? (activeCompany ?? { name: nda.utgivareNamn, orgNumber: nda.utgivareOrgnr })
-          : (activeCompany ?? { name: ownCompanyName, orgNumber: ownCompanyOrgnr }),
-        trustLevel,
-        userId: user?.id || profile?.id || null,
-        orgNumber: contractType === 'nda' ? nda.utgivareOrgnr : ownCompanyOrgnr || null,
-        companyName: contractType === 'nda' ? nda.utgivareNamn : ownCompanyName || null,
+      const { data, error, response } = await supabase.functions.invoke<GenerateResponse>('generate-contract', {
+        // Ett kontobyte i en annan flik får inte byta token för det här formuläret.
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: {
+          contractType,
+          formAnswers,
+          companyData: contractType === 'nda'
+            ? (activeCompany ?? { name: nda.utgivareNamn, orgNumber: nda.utgivareOrgnr })
+            : (activeCompany ?? { name: ownCompanyName, orgNumber: ownCompanyOrgnr }),
+          orgNumber: contractType === 'nda' ? nda.utgivareOrgnr : ownCompanyOrgnr || null,
+          companyName: contractType === 'nda' ? nda.utgivareNamn : ownCompanyName || null,
+        },
       })
+      if (error && await handleBankIDRejection(response, bankIDSessionId, rejectBankIDSession)) {
+        setView('form')
+        return
+      }
+      if (error || !data) throw new Error('Avtalet kunde inte skapas. Försök igen.')
 
-      setResult(response)
-      setView(response.status === 'generated' && response.content_markdown ? 'result' : 'flagged')
+      setResult(data)
+      setView(data.status === 'generated' && data.content_markdown ? 'result' : 'flagged')
     } catch (err) {
       console.error('generate-contract failed:', err)
       setErrorMessage(err instanceof Error ? err.message : 'Ett oväntat fel uppstod')
@@ -371,7 +391,7 @@ export function ContractEngine() {
   // -------------------------------------------------------------------------
   // Trust-gate: BankID krävs (LockedOverlay-principen — visa vägen framåt)
   // -------------------------------------------------------------------------
-  if (!isBankId) {
+  if (!bankIDSessionId) {
     return (
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold tracking-tight text-[#0E3047] mb-6">Avtalsmotorn</h1>
@@ -379,11 +399,12 @@ export function ContractEngine() {
           <FileSignature size={40} className="text-gray-400 mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-[#0E3047] mb-2">Lås upp med BankID</h2>
           <p className="text-sm text-[#4B6680] mb-6 max-w-md mx-auto">
-            Avtal genereras med Johns perspektiv bakom analysen och kräver därför att du
-            verifierar dig med BankID. Det tar mindre än en minut.
+            {bankIDSessionRejected
+              ? 'Din BankID-verifiering gäller inte längre. Verifiera dig igen för att skapa avtal.'
+              : 'Du behöver verifiera dig med BankID för att skapa avtal.'}
           </p>
           <button
-            onClick={() => signInWithBankID()}
+            onClick={() => void signInWithBankID().catch(() => toast.error('BankID kunde inte startas. Försök igen.'))}
             className="bg-[#0E3047] text-[#FAF6EE] px-6 py-3 rounded-lg font-medium hover:bg-[#1A4060] transition-colors"
           >
             Verifiera med BankID
