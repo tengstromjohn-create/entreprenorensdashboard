@@ -93,9 +93,62 @@ interface PipelineResult {
   wasAutoDelivered: boolean
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isQaIssue(value: unknown): value is { category: string } {
+  return isObject(value) &&
+    typeof value.category === 'string' &&
+    ['legal_accuracy', 'hallucination', 'tone', 'missing_info', 'wrong_recommendation', 'structural', 'swedish_context'].includes(value.category) &&
+    (value.severity === 'critical' || value.severity === 'warning' || value.severity === 'minor') &&
+    typeof value.location === 'string' &&
+    typeof value.description === 'string' &&
+    (typeof value.suggested_fix === 'string' || value.suggested_fix === null)
+}
+
+function parseQaVerdict(text: string | undefined, sourceType: PipelineInput['sourceType']) {
+  const response = text?.trim() ?? ''
+  const fencedJson = response.match(/^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```$/i)
+  let result: unknown
+  try {
+    result = JSON.parse(fencedJson?.[1] ?? response)
+  } catch {
+    throw new Error('Claude QA returned invalid JSON')
+  }
+
+  if (!isObject(result)) throw new Error('Invalid Claude QA verdict')
+  const { verdict, issues, confidence, summary, corrected_output: correctedOutput } = result
+  if (
+    (verdict !== 'approve' && verdict !== 'correct' && verdict !== 'flag') ||
+    !Array.isArray(issues) || !issues.every(isQaIssue) ||
+    typeof confidence !== 'number' || confidence < 0 || confidence > 1 ||
+    typeof summary !== 'string'
+  ) {
+    throw new Error('Invalid Claude QA verdict')
+  }
+
+  if (verdict === 'correct') {
+    if (!isObject(correctedOutput)) throw new Error('Missing Claude QA correction')
+    if (sourceType === 'contract' && (
+      typeof correctedOutput.title !== 'string' || !correctedOutput.title.trim() ||
+      typeof correctedOutput.content_markdown !== 'string' || !correctedOutput.content_markdown.trim()
+    )) {
+      throw new Error('Invalid Claude QA contract correction')
+    }
+  } else if (correctedOutput !== null) {
+    throw new Error('Unexpected Claude QA correction')
+  }
+
+  return { verdict, issues, confidence, correctedOutput, result } as const
+}
+
+const QA_CLIENT_ERROR = 'Kvalitetskontrollen misslyckades. Dokumentet kunde inte levereras. Försök igen senare.'
+// Avtalsgeneratorn kan skriva 16 384 token. En korrigering behöver även rymma QA-svarets JSON och granskningsanmärkningar.
+const CONTRACT_QA_MAX_TOKENS = 32_768
+
 export async function runQAPipeline(input: PipelineInput): Promise<PipelineResult> {
   const admin = getAdminClient()
-  const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
   const startTime = Date.now()
 
   // Skapa QA-review-post direkt (pending)
@@ -115,119 +168,75 @@ export async function runQAPipeline(input: PipelineInput): Promise<PipelineResul
     .select('id')
     .single()
 
-  if (insertError) throw insertError
+  if (insertError) {
+    console.error('Claude QA review insert failed', { code: insertError.code })
+    throw new Error(QA_CLIENT_ERROR)
+  }
   const reviewId = review.id
 
-  // Om ingen Anthropic-nyckel: godkänn direkt (dev-läge)
-  if (!anthropicKey) {
-    await admin
+  const updateReview = async (fields: Record<string, unknown>) => {
+    const { error } = await admin
       .from('ai_qa_reviews')
-      .update({
-        qa_status: 'approved',
-        qa_verdict: { verdict: 'approve', note: 'No ANTHROPIC_API_KEY — auto-approved (dev mode)' },
-        qa_confidence_score: 0,
-        final_output: input.geminiOutput,
-        delivered_at: new Date().toISOString(),
-      })
+      .update(fields)
       .eq('id', reviewId)
+      .select('id')
+      .single()
 
-    return {
-      finalOutput: input.geminiOutput,
-      qaStatus: 'approved',
-      qaReviewId: reviewId,
-      wasAutoDelivered: true,
-    }
+    if (error) throw new Error(`QA review update failed (${error.code})`)
   }
 
   // Steg 2: Claude QA
   try {
     const userContent = `Granska denna ${input.sourceType === 'health_check' ? 'Corporate Health Check-rapport' : input.sourceType === 'contract' ? 'avtalsgenerering (granska content_markdown som juridiskt dokument: korrekta lagrum, inga påhittade uppgifter utanför klamrar, tvingande arbetsrätt respekterad)' : 'Startup Kit-rapport'}:\n\n${JSON.stringify(input.geminiOutput, null, 2)}`
-    const qa = await qaWithClaude(CLAUDE_QA_SYSTEM_PROMPT, userContent)
-    const qaData = qa.raw as { content?: { text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } }
-    const qaLatencyMs = Date.now() - startTime
-    const qaText = qa.text || '{}'
-    const qaVerdict = JSON.parse(qaText)
+    const qa = await qaWithClaude(
+      CLAUDE_QA_SYSTEM_PROMPT,
+      userContent,
+      input.sourceType === 'contract' ? CONTRACT_QA_MAX_TOKENS : undefined,
+    )
+    const qaVerdict = parseQaVerdict(qa.text, input.sourceType)
+    const qaStatus = { approve: 'approved', correct: 'corrected', flag: 'flagged' }[qaVerdict.verdict]
+    const finalOutput = qaVerdict.correctedOutput ?? input.geminiOutput
+    const wasAutoDelivered = qaVerdict.verdict !== 'flag'
 
-    // Bestäm status och output baserat på verdict
-    let qaStatus: string
-    let finalOutput: Record<string, unknown>
-    let deliveredAt: string | null = null
-
-    switch (qaVerdict.verdict) {
-      case 'approve':
-        qaStatus = 'approved'
-        finalOutput = input.geminiOutput
-        deliveredAt = new Date().toISOString()
-        break
-
-      case 'correct':
-        qaStatus = 'corrected'
-        finalOutput = qaVerdict.corrected_output || input.geminiOutput
-        deliveredAt = new Date().toISOString()
-        break
-
-      case 'flag':
-      default:
-        qaStatus = 'flagged'
-        finalOutput = input.geminiOutput // Sparas men levereras inte
-        break
-    }
-
-    // Extrahera issue-kategorier
-    const issueCategories = [...new Set(
-      (qaVerdict.issues || []).map((i: { category: string }) => i.category)
-    )]
-
-    // Uppdatera QA-review
-    await admin
-      .from('ai_qa_reviews')
-      .update({
-        qa_status: qaStatus,
-        qa_verdict: qaVerdict,
-        qa_issues: qaVerdict.issues || [],
-        qa_confidence_score: qaVerdict.confidence || 0,
-        qa_model: QA_MODEL,
-        qa_tokens_in: qaData.usage?.input_tokens || null,
-        qa_tokens_out: qaData.usage?.output_tokens || null,
-        qa_latency_ms: qaLatencyMs,
-        final_output: finalOutput,
-        delivered_at: deliveredAt,
-        issue_categories: issueCategories,
-      })
-      .eq('id', reviewId)
+    await updateReview({
+      qa_status: qaStatus,
+      qa_verdict: qaVerdict.result,
+      qa_issues: qaVerdict.issues,
+      qa_confidence_score: qaVerdict.confidence,
+      qa_model: QA_MODEL,
+      qa_tokens_in: qa.tokensIn ?? null,
+      qa_tokens_out: qa.tokensOut ?? null,
+      qa_latency_ms: Date.now() - startTime,
+      final_output: finalOutput,
+      delivered_at: wasAutoDelivered ? new Date().toISOString() : null,
+      issue_categories: [...new Set(qaVerdict.issues.map((issue) => issue.category))],
+    })
 
     return {
       finalOutput,
       qaStatus,
       qaReviewId: reviewId,
-      wasAutoDelivered: qaStatus !== 'flagged',
+      wasAutoDelivered,
     }
 
   } catch (qaError) {
-    // Om Claude QA misslyckas: godkänn Gemini-output med notering
-    // Bättre att leverera ogranskad output än ingen alls
-    console.error('Claude QA failed:', qaError)
+    const reason = qaError instanceof Error ? qaError.message : 'Unexpected QA error'
+    console.error('Claude QA failed', { reviewId, reason })
 
-    await admin
-      .from('ai_qa_reviews')
-      .update({
-        qa_status: 'approved',
-        qa_verdict: {
-          verdict: 'approve',
-          note: `QA failed: ${qaError.message}. Auto-approved as fallback.`,
-        },
-        qa_confidence_score: 0,
-        final_output: input.geminiOutput,
-        delivered_at: new Date().toISOString(),
+    try {
+      await updateReview({
+        qa_status: 'failed',
+        qa_verdict: { verdict: 'failed', note: reason },
+        qa_model: QA_MODEL,
+        qa_latency_ms: Date.now() - startTime,
+        final_output: null,
+        delivered_at: null,
       })
-      .eq('id', reviewId)
-
-    return {
-      finalOutput: input.geminiOutput,
-      qaStatus: 'approved',
-      qaReviewId: reviewId,
-      wasAutoDelivered: true,
+    } catch (updateError) {
+      console.error('Could not persist failed Claude QA review', { reviewId, updateError })
     }
+
+    throw new Error(QA_CLIENT_ERROR)
   }
 }
 
